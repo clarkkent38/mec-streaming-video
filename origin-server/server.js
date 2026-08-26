@@ -24,6 +24,7 @@ const os      = require('os');
 const PORT       = parseInt(process.env.PORT      || '3000', 10);
 const NODE_LABEL = process.env.NODE_LABEL         || 'origin';
 const BIND_HOST  = process.env.BIND_HOST          || '0.0.0.0';
+const AKAMAI_PROXY = process.env.AKAMAI_PROXY === 'true';
 
 const DASH_DIR   = path.join(__dirname, 'dash-output');
 const MEDIA_DIR  = path.join(__dirname, 'media');
@@ -113,6 +114,34 @@ app.post('/restore', (_req, res) => {
 // ─── Static routes ────────────────────────────────────────────────────────────
 
 app.use('/dash', (req, res, next) => {
+  if (AKAMAI_PROXY) {
+    const akamaiBaseUrl = 'https://dash.akamaized.net/akamai/bbb_30fps';
+    const targetUrl = akamaiBaseUrl + req.url;
+
+    // Optional: Log proxy requests if you want to track them
+    // console.log(`[PROXY] Origin proxying to: ${targetUrl}`);
+
+    req.pipe(
+      require('https').request(targetUrl, {
+        method: req.method,
+        headers: {
+          ...req.headers,
+          host: 'dash.akamaized.net'
+        }
+      }, (proxyRes) => {
+        // Set CORS headers for the proxy response
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+      })
+    ).on('error', (err) => {
+      console.error(`[PROXY ERROR] Origin: ${err.message}`);
+      res.status(502).json({ error: 'Proxy fetch failed', message: err.message });
+    });
+    return;
+  }
+
   const safePath = path.normalize(req.path).replace(/^(\.\.([\/\\]|$))+/, '');
   const fullPath = path.join(DASH_DIR, safePath);
 

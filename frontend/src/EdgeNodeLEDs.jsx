@@ -26,14 +26,23 @@ export default function EdgeNodeLEDs({ activeNodeId }) {
     };
   }, []);
 
-  const getLedClass = (node) => {
-    if (node.status === 'DOWN') return 'led-red-strobe';
-    if (node.status === 'UNKNOWN') return 'led-amber-blink';
-    if (node.status === 'UP') {
-      if (node.id === activeNodeId) return 'led-green-pulse';
-      return 'led-green-steady';
+  const getStatusBadge = (node, isActive) => {
+    if (node.status === 'DOWN') {
+      return <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-950/50 text-red-500 border border-red-900">OFFLINE</span>;
     }
-    return 'led-inactive';
+    if (node.status === 'UNKNOWN') {
+      return <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-950/50 text-amber-500 border border-amber-900">WAIT</span>;
+    }
+    
+    // Check if UP but degraded
+    if (node.status === 'UP' && node.delay_ms > 50) {
+       return <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-yellow-950/50 text-yellow-500 border border-yellow-900">DEGRADED</span>;
+    }
+
+    if (isActive) {
+      return <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-zinc-100 text-zinc-900 border border-zinc-300">ACTIVE</span>;
+    }
+    return <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-zinc-900 text-zinc-500 border border-zinc-800">STANDBY</span>;
   };
 
   const masterNode = { id: 'origin', status: 'UP', isMaster: true };
@@ -46,23 +55,21 @@ export default function EdgeNodeLEDs({ activeNodeId }) {
           const isActive = activeNodeId === node.id || (!activeNodeId && node.isMaster);
           return (
             <div key={node.id} className="flex items-center gap-2">
-              <div 
-                className={`w-4 h-4 rounded-full border border-black shadow-[inset_1px_1px_2px_rgba(0,0,0,0.5)] ${isActive && node.id === 'origin' ? 'led-green-pulse' : getLedClass(node)}`}
-              />
+              {getStatusBadge(node, isActive && (node.id === 'origin' || node.status === 'UP'))}
               <div className="flex flex-col">
-                <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? 'text-green-400' : 'text-slate-400'}`}>
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? 'text-zinc-200' : 'text-zinc-500'}`}>
                   {node.id}
                 </span>
-                <span className="text-[8px] text-slate-500 font-mono">
-                  {node.isMaster ? 'MASTER NODE' : (node.status === 'UP' ? `ENABLED / ${node.delay_ms}ms` : node.status)}
+                <span className="text-[8px] text-zinc-600 font-mono">
+                  {node.isMaster ? 'ORIGIN SERVER' : (node.status === 'UP' ? `LATENCY: ${node.delay_ms}ms` : node.status)}
                 </span>
               </div>
             </div>
           );
         })}
       </div>
-      <div className="text-[9px] uppercase text-slate-500 tracking-widest border border-slate-700 px-2 py-0.5 rounded bg-slate-900/50">
-        VNF Cluster Status
+      <div className="text-[9px] uppercase text-zinc-500 tracking-widest border border-zinc-800 px-2 py-0.5 rounded bg-zinc-900">
+        Infrastructure Status
       </div>
     </div>
   );

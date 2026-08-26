@@ -96,11 +96,11 @@ const SCENARIOS = [
 ];
 
 const COLOR_MAP = {
-  emerald: { btn: 'bg-emerald-600 hover:bg-emerald-500 text-white',     badge: 'bg-emerald-900/60 text-emerald-300' },
-  amber:   { btn: 'bg-amber-600   hover:bg-amber-500   text-white',     badge: 'bg-amber-900/60   text-amber-300'   },
-  rose:    { btn: 'bg-rose-600    hover:bg-rose-500    text-white',     badge: 'bg-rose-900/60    text-rose-300'    },
-  blue:    { btn: 'bg-blue-600    hover:bg-blue-500    text-white',     badge: 'bg-blue-900/60    text-blue-300'    },
-  slate:   { btn: 'bg-slate-600   hover:bg-slate-500   text-white',     badge: 'bg-slate-800      text-slate-300'   },
+  emerald: { btn: 'text-zinc-100', badge: 'bg-zinc-900 text-zinc-400' },
+  amber:   { btn: 'text-zinc-100', badge: 'bg-zinc-900 text-zinc-400' },
+  rose:    { btn: 'text-zinc-100', badge: 'bg-zinc-900 text-zinc-400' },
+  blue:    { btn: 'text-zinc-100', badge: 'bg-zinc-900 text-zinc-400' },
+  slate:   { btn: 'text-zinc-100', badge: 'bg-zinc-900 text-zinc-400' },
 };
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -143,12 +143,12 @@ export default function ScenarioPanel({ onScenarioRun }) {
       {/* Header / toggle */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/5 transition-colors rounded-t-xl"
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800 transition-colors rounded-t-xl"
       >
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#b8860b]">🎮 VNFM Demo Control Panel</span>
+          <span className="text-xs font-semibold tracking-wide text-zinc-300">DEMO CONTROL PANEL</span>
         </div>
-        <span className="text-slate-500 text-xs font-mono">{open ? '▲ collapse' : '▼ expand'}</span>
+        <span className="text-zinc-500 text-xs font-mono">{open ? '▲ collapse' : '▼ expand'}</span>
       </button>
 
       {open && (
@@ -191,7 +191,7 @@ export default function ScenarioPanel({ onScenarioRun }) {
             {SCENARIOS.map(s => {
               const colors = COLOR_MAP[s.color];
               return (
-                <div key={s.id} className={`text-[8px] px-1 py-1 border border-slate-700/50 shadow-inner rounded ${colors.badge} text-center leading-snug font-mono`}>
+                <div key={s.id} className={`text-[9px] px-2 py-1.5 border border-zinc-800 rounded-md ${colors.badge} text-center leading-snug font-mono`}>
                   {s.desc}
                 </div>
               );
@@ -200,7 +200,7 @@ export default function ScenarioPanel({ onScenarioRun }) {
 
           {/* Last result */}
           {lastResult && (
-            <div className={`text-[11px] font-mono px-3 py-2 rounded-lg border shadow-inner ${lastResult.ok ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : 'bg-rose-900/30 text-rose-400 border-rose-800'}`}>
+            <div className={`text-[11px] font-mono px-3 py-2 rounded-lg border ${lastResult.ok ? 'bg-zinc-900 text-zinc-300 border-zinc-700' : 'bg-red-950/30 text-red-400 border-red-900'}`}>
               {lastResult.message}
               {running === null && <span className="ml-2 opacity-60">— node status refreshed</span>}
             </div>
@@ -208,29 +208,29 @@ export default function ScenarioPanel({ onScenarioRun }) {
 
           {/* Live /nodes snapshot */}
           {nodes && (
-            <div className="bg-black/30 shadow-[inset_2px_2px_8px_rgba(0,0,0,0.5)] border border-[#2a2a35] rounded-lg p-3 space-y-1 relative">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#b8860b] mb-2 flex justify-between">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-1 relative">
+              <div className="text-[10px] font-medium tracking-wide text-zinc-400 mb-2 flex justify-between">
                 <span>Live Node Status</span>
                 <span>{nodes.up}/{nodes.total} UP</span>
               </div>
               {nodes.nodes.map(n => (
                 <div key={n.id} className="flex items-center justify-between text-[11px] font-mono mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[14px]">{n.status === 'UP' ? '🟢' : n.status === 'DOWN' ? '🔴' : '🟡'}</span>
-                    <span className="text-slate-300">{n.id}</span>
+                    <span className="text-[14px]">{n.status === 'UP' ? '○' : n.status === 'DOWN' ? '×' : '△'}</span>
+                    <span className="text-zinc-300">{n.id}</span>
                   </div>
-                  <div className="flex gap-4 text-slate-400">
+                  <div className="flex gap-4 text-zinc-400">
                     <span className="w-12 text-right">{n.delay_ms != null ? `${n.delay_ms}ms` : '—'}</span>
-                    <span className={`w-12 text-right ${n.status === 'UP' ? 'text-emerald-400' : 'text-rose-400'}`}>{n.status}</span>
+                    <span className={`w-12 text-right ${n.status === 'UP' ? 'text-zinc-300' : 'text-zinc-500'}`}>{n.status}</span>
                   </div>
                 </div>
               ))}
-              <div className="text-[9px] text-slate-600 pt-2 border-t border-slate-800 mt-2 flex justify-between">
+              <div className="text-[9px] text-zinc-500 pt-2 border-t border-zinc-800 mt-2 flex justify-between">
                 <span>Last checked: {new Date(nodes.timestamp).toLocaleTimeString()}</span>
                 <button
                   onClick={fetchNodes}
                   disabled={running !== null}
-                  className="hover:text-slate-300 underline disabled:opacity-40 transition-colors"
+                  className="hover:text-zinc-300 underline disabled:opacity-40 transition-colors"
                 >
                   ↻ Refresh
                 </button>

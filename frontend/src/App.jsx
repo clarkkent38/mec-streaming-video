@@ -117,13 +117,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen p-4 md:p-6 overflow-hidden relative">
-      
-      {/* Background ambient light */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-900/20 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-900/20 rounded-full blur-[100px] pointer-events-none" />
 
       {IS_LAN_MODE && (
-        <div className="w-full max-w-[90rem] mx-auto mb-3 flex items-center gap-2 skeubrutal-panel border border-violet-700/50 text-violet-300 text-xs px-4 py-2 rounded-lg relative z-10">
+        <div className="w-full max-w-[90rem] mx-auto mb-3 flex items-center gap-2 skeubrutal-panel text-zinc-400 text-xs px-4 py-2 rounded-lg relative z-10">
           <span>📡</span>
           <span><strong>LAN Mode active</strong> — frontend is accessible on your local network. Make sure firewall allows ports 3000, 4001, 4002, 5000, 5173.</span>
         </div>
@@ -132,12 +128,12 @@ export default function App() {
       {/* Header */}
       <div className="w-full max-w-[90rem] mx-auto mb-3 relative z-10 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-black text-slate-100 tracking-tight">
-            VNF <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500">Edge Streamer</span>
+          <h1 className="text-lg font-bold text-zinc-100 tracking-tight">
+            VNF <span className="text-zinc-400 font-normal">Edge Streamer</span>
           </h1>
-          <span className="text-slate-600 text-xs font-mono hidden md:inline">Adaptive DASH · Context-Aware MEC + NFV</span>
+          <span className="text-zinc-500 text-xs font-mono hidden md:inline ml-2">Adaptive DASH · Context-Aware MEC + NFV</span>
         </div>
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Akamai_logo.svg/512px-Akamai_logo.svg.png" className="h-3 opacity-30 contrast-200 grayscale brightness-200 hidden md:block" alt="Powered by Akamai" />
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Akamai_logo.svg/512px-Akamai_logo.svg.png" className="h-3 opacity-20 grayscale hidden md:block" alt="Powered by Akamai" />
       </div>
 
       {globalError && (
@@ -186,20 +182,22 @@ export default function App() {
                 </span>
               </div>
               <div className="flex items-center gap-4">
-                <span className={`text-sm font-mono transition-colors ${!isEdgeMode ? 'text-blue-400 font-bold' : 'text-slate-500'}`}>
-                  ORIGIN (DIRECT)
+                <span className={`text-sm font-medium transition-colors ${!isEdgeMode ? 'text-zinc-100' : 'text-zinc-500'}`}>
+                  Direct
                 </span>
                 
-                {/* Physical-looking toggle */}
+                {/* Shadcn style toggle */}
                 <button
                   id="mode-toggle"
                   onClick={() => setIsEdgeMode(m => !m)}
-                  className={`w-14 h-7 rounded-full transition-colors relative shadow-[inset_2px_2px_8px_rgba(0,0,0,0.8)] border border-slate-700/50 ${isEdgeMode ? 'bg-emerald-900/50' : 'bg-slate-900'}`}
+                  className={`w-11 h-6 rounded-full transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 ${isEdgeMode ? 'bg-zinc-100' : 'bg-zinc-800'}`}
                 >
-                  <div className={`w-5 h-5 rounded-full absolute top-[3px] transition-all duration-300 shadow-[0_2px_6px_rgba(0,0,0,0.5),inset_1px_1px_2px_rgba(255,255,255,0.2)] flex items-center justify-center ${isEdgeMode ? 'left-[33px] bg-emerald-500' : 'left-[3px] bg-slate-400'}`}>
-                    <div className="w-1.5 h-1.5 rounded-full shadow-[inset_1px_1px_2px_rgba(0,0,0,0.3)] bg-black/10" />
+                  <div className={`w-5 h-5 rounded-full absolute top-[2px] transition-transform duration-200 bg-white shadow-sm ${isEdgeMode ? 'translate-x-[22px] bg-zinc-900' : 'translate-x-[2px]'}`}>
                   </div>
                 </button>
+                <span className={`text-sm font-medium transition-colors ${isEdgeMode ? 'text-zinc-100' : 'text-zinc-500'}`}>
+                  MEC Engine
+                </span>
               </div>
               <div id="quality-container"></div>
             </div>
@@ -252,19 +250,18 @@ export default function App() {
             <div id="graphs-container" className="flex gap-2 w-full mt-1"></div>
 
             {/* Routing event log */}
-            <div className="card rounded-xl p-3 flex-1 min-h-[90px] mt-1">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#b8860b] mb-2 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#b8860b] animate-pulse"></span>
-                Terminal / Route Log
+            <div className="card rounded-xl p-3 flex-1 min-h-[90px] mt-1 border-zinc-800">
+              <h3 className="text-[10px] font-medium uppercase tracking-widest text-zinc-400 mb-2 flex items-center gap-2">
+                Terminal
               </h3>
               {routeLog.length === 0 ? (
-                <p className="text-slate-600 text-[10px] italic font-mono">_ waiting for telemetry</p>
+                <p className="text-zinc-600 text-[10px] font-mono">waiting for telemetry...</p>
               ) : (
-                <div className="space-y-1 h-[80px] overflow-y-auto pr-1 font-mono text-[10px] leading-tight scrollbar-thin scrollbar-thumb-slate-700">
+                <div className="space-y-1 h-[80px] overflow-y-auto pr-1 font-mono text-[10px] leading-tight">
                   {routeLog.map(entry => (
-                    <div key={entry.id} className={`flex gap-2 px-2 py-1 rounded ${logBg(entry.type)}`}>
-                      <span className="text-slate-500 shrink-0">[{entry.ts}]</span>
-                      <span className={logColor(entry.type)}>» {entry.message}</span>
+                    <div key={entry.id} className={`flex gap-2 px-2 py-1 rounded bg-zinc-900/50`}>
+                      <span className="text-zinc-500 shrink-0">[{entry.ts}]</span>
+                      <span className="text-zinc-300">» {entry.message}</span>
                     </div>
                   ))}
                 </div>

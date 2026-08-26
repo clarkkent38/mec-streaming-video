@@ -254,19 +254,19 @@ export default function LiveStatsPanel({ playerRef, playerReady }) {
       {/* ── Streaming Telemetry ───────────────────────────────────────────── */}
       <div className="card" style={{ padding: '10px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px #3b82f6' }} />
-          <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Telemetry</span>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 8px #3b82f6' }} />
+          <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Telemetry</span>
         </div>
 
-        <StatRow label="Resolution"     value={stats.resolution} />
-        <StatRow label="Dropped Frames" value={`${stats.droppedFrames} / ${stats.totalFrames}`} />
-        <StatRow label="Stalls"         value={stats.stallCount} accent={stats.stallCount > 0 ? '#f43f5e' : '#10b981'} />
+        <StatRow label="Resolution"     value={stats.resolution} accent="#e4e4e7" />
+        <StatRow label="Dropped Frames" value={`${stats.droppedFrames} / ${stats.totalFrames}`} accent={stats.droppedFrames > 0 ? '#fbbf24' : '#e4e4e7'} />
+        <StatRow label="Stalls"         value={stats.stallCount} accent={stats.stallCount > 0 ? '#ef4444' : '#10b981'} />
 
         {/* Bitrate bar */}
         <div style={{ marginTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#64748b' }}>Throughput</span>
-            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#3b82f6', fontWeight: 600 }}>
+            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#71717a' }}>Throughput</span>
+            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#60a5fa', fontWeight: 600 }}>
               {stats.bitrate > 0 ? `${stats.bitrate.toLocaleString()} kbps` : '— kbps'}
             </span>
           </div>
@@ -276,12 +276,12 @@ export default function LiveStatsPanel({ playerRef, playerReady }) {
         {/* Buffer bar */}
         <div style={{ marginTop: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#64748b' }}>Buffer</span>
-            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#10b981', fontWeight: 600 }}>
+            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#71717a' }}>Buffer</span>
+            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#34d399', fontWeight: 600 }}>
               {stats.buffer.toFixed(1)} s
             </span>
           </div>
-          <MiniBar pct={bufPct} color={bufPct < 10 ? '#f43f5e' : '#10b981'} />
+          <MiniBar pct={bufPct} color={bufPct < 10 ? '#ef4444' : '#10b981'} />
         </div>
       </div>
 
@@ -289,29 +289,29 @@ export default function LiveStatsPanel({ playerRef, playerReady }) {
       {mecStats && (
         <div className="card" style={{ padding: '10px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#a855f7', boxShadow: '0 0 6px #a855f7' }} />
-            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>MEC FMDASH+ Engine</span>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#a855f7', boxShadow: '0 0 8px #a855f7' }} />
+            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.1em' }}>MEC FMDASH+ Engine</span>
           </div>
           
-          <StatRow label="Shannon Entropy (H)" value={mecStats.entropy?.toFixed(3)} />
-          <StatRow label="Traceback Window (k)" value={mecStats.k} />
-          <StatRow label="Smoothed Bandwidth" value={`${(mecStats.smoothedBandwidth / 1000).toFixed(0)} kbps`} />
-          <StatRow label="MEC ABR Decision" value={`${mecStats.abrDecision} kbps`} accent="#a855f7" />
-          <StatRow label="Bandwidth Efficiency" value={`${mecStats.utilizationPct}%`} />
+          <StatRow label="Shannon Entropy (H)" value={mecStats.entropy?.toFixed(3)} accent="#c084fc" />
+          <StatRow label="Traceback Window (k)" value={mecStats.k} accent="#e4e4e7" />
+          <StatRow label="Smoothed Bandwidth" value={`${(mecStats.smoothedBandwidth / 1000).toFixed(0)} kbps`} accent="#c084fc" />
+          <StatRow label="MEC ABR Decision" value={`${mecStats.abrDecision} kbps`} accent="#d8b4fe" />
+          <StatRow label="Bandwidth Efficiency" value={`${mecStats.utilizationPct}%`} accent="#a78bfa" />
           
           <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#64748b' }}>Fuzzy BW</span>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#71717a' }}>Fuzzy BW</span>
               <div style={{ display: 'flex', gap: 2, marginTop: 4 }}>
-                <div style={{ flex: 1, height: 4, background: `rgba(244,63,94,${Math.max(0.2, mecStats.fuzzyBw.low)})`, borderRadius: 2 }} title="Low" />
+                <div style={{ flex: 1, height: 4, background: `rgba(239,68,68,${Math.max(0.2, mecStats.fuzzyBw.low)})`, borderRadius: 2 }} title="Low" />
                 <div style={{ flex: 1, height: 4, background: `rgba(245,158,11,${Math.max(0.2, mecStats.fuzzyBw.medium)})`, borderRadius: 2 }} title="Med" />
                 <div style={{ flex: 1, height: 4, background: `rgba(16,185,129,${Math.max(0.2, mecStats.fuzzyBw.high)})`, borderRadius: 2 }} title="High" />
               </div>
             </div>
             <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#64748b' }}>Fuzzy BUF</span>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#71717a' }}>Fuzzy BUF</span>
               <div style={{ display: 'flex', gap: 2, marginTop: 4 }}>
-                <div style={{ flex: 1, height: 4, background: `rgba(244,63,94,${Math.max(0.2, mecStats.fuzzyBuf.low)})`, borderRadius: 2 }} title="Low" />
+                <div style={{ flex: 1, height: 4, background: `rgba(239,68,68,${Math.max(0.2, mecStats.fuzzyBuf.low)})`, borderRadius: 2 }} title="Low" />
                 <div style={{ flex: 1, height: 4, background: `rgba(245,158,11,${Math.max(0.2, mecStats.fuzzyBuf.medium)})`, borderRadius: 2 }} title="Med" />
                 <div style={{ flex: 1, height: 4, background: `rgba(16,185,129,${Math.max(0.2, mecStats.fuzzyBuf.high)})`, borderRadius: 2 }} title="High" />
               </div>
@@ -326,8 +326,8 @@ export default function LiveStatsPanel({ playerRef, playerReady }) {
           {/* ── Bitrate History ───────────────────────────────────────────────── */}
           <div className="card" style={{ padding: '6px 10px', flex: 1, minHeight: 90, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bitrate History</span>
-              <span style={{ fontSize: 8, fontFamily: 'monospace', color: '#334155' }}>30s · kbps</span>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bitrate History</span>
+              <span style={{ fontSize: 8, fontFamily: 'monospace', color: '#52525b' }}>30s · kbps</span>
             </div>
             <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -344,7 +344,7 @@ export default function LiveStatsPanel({ playerRef, playerReady }) {
                     domain={[0, dataMax => Math.max(1000, Math.ceil(dataMax * 1.15 / 500) * 500)]}
                     tickCount={4}
                     tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : String(v)}
-                    style={{ fontSize: 8, fontFamily: 'monospace', fill: '#475569' }}
+                    style={{ fontSize: 8, fontFamily: 'monospace', fill: '#60a5fa' }}
                     width={28}
                   />
                   <Tooltip content={<ChartTooltip unit=" kbps" />} />
@@ -365,8 +365,8 @@ export default function LiveStatsPanel({ playerRef, playerReady }) {
           {/* ── Buffer History ────────────────────────────────────────────────── */}
           <div className="card" style={{ padding: '6px 10px', flex: 1, minHeight: 90, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Buffer Health</span>
-              <span style={{ fontSize: 8, fontFamily: 'monospace', color: '#334155' }}>30s · sec</span>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Buffer Health</span>
+              <span style={{ fontSize: 8, fontFamily: 'monospace', color: '#52525b' }}>30s · sec</span>
             </div>
             <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -383,7 +383,7 @@ export default function LiveStatsPanel({ playerRef, playerReady }) {
                     domain={[0, dataMax => Math.max(10, Math.ceil(dataMax * 1.2))]}
                     tickCount={4}
                     tickFormatter={v => `${v}s`}
-                    style={{ fontSize: 8, fontFamily: 'monospace', fill: '#475569' }}
+                    style={{ fontSize: 8, fontFamily: 'monospace', fill: '#34d399' }}
                     width={24}
                   />
                   <Tooltip content={<ChartTooltip unit="s" />} />
