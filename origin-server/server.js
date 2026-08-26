@@ -116,10 +116,11 @@ app.post('/restore', (_req, res) => {
 app.use('/dash', (req, res, next) => {
   if (AKAMAI_PROXY) {
     const akamaiBaseUrl = 'https://dash.akamaized.net/akamai/bbb_30fps';
-    const targetUrl = akamaiBaseUrl + req.url;
-
-    // Optional: Log proxy requests if you want to track them
-    // console.log(`[PROXY] Origin proxying to: ${targetUrl}`);
+    let targetPath = req.url;
+    if (targetPath === '/manifest.mpd') {
+      targetPath = '/bbb_30fps.mpd';
+    }
+    const targetUrl = akamaiBaseUrl + targetPath;
 
     const proxyReq = require('https').request(targetUrl, {
       method: req.method,
