@@ -29,7 +29,7 @@ const os      = require('os');
 
 const PORT       = parseInt(process.env.PORT       || '4001', 10);
 const NODE_ID    = process.env.NODE_ID             || 'edge-node-1';
-const BIND_HOST  = process.env.BIND_HOST           || 'localhost';
+const BIND_HOST  = process.env.BIND_HOST           || '0.0.0.0';
 const ORIGIN_URL = (process.env.ORIGIN_URL         || 'http://localhost:3000').replace(/\/$/, '');
 const AKAMAI_PROXY = process.env.AKAMAI_PROXY === 'true';
 
