@@ -1,0 +1,23 @@
+{
+  "name": "edge-streaming-project",
+  "version": "1.0.0",
+  "description": "Edge-based video streaming optimization using VNF orchestration (MEC + NFV demo)",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix origin-server & npm install --prefix edge-node & npm install --prefix orchestrator & npm install --prefix frontend",
+    "origin": "node origin-server/server.js",
+    "edge1": "cross-env PORT=4001 NODE_ID=edge-node-1 DELAY_MS=5  ORIGIN_URL=http://localhost:3000 node edge-node/server.js",
+    "edge2": "cross-env PORT=4002 NODE_ID=edge-node-2 DELAY_MS=15 ORIGIN_URL=http://localhost:3000 node edge-node/server.js",
+    "orchestrator": "node orchestrator/server.js",
+    "frontend": "npm run dev --prefix frontend",
+    "encode": "npm run encode --prefix origin-server",
+    "scenarios": "node orchestrator/test-scenarios.js",
+    "start:lan": "cross-env VITE_LAN=true node lan-start.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "puppeteer": "^24.43.1"
+  }
+}

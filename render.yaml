@@ -1,0 +1,90 @@
+services:
+  - type: web
+    name: origin-server
+    env: node
+    rootDir: origin-server
+    buildCommand: npm install
+    startCommand: node server.js
+    
+  - type: web
+    name: edge-node-1
+    env: node
+    rootDir: edge-node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ID
+        value: edge-node-1
+      - key: ORIGIN_URL
+        fromService:
+          type: web
+          name: origin-server
+          envVarKey: RENDER_EXTERNAL_URL
+          
+  - type: web
+    name: edge-node-2
+    env: node
+    rootDir: edge-node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ID
+        value: edge-node-2
+      - key: DELAY_MS
+        value: 15
+      - key: ORIGIN_URL
+        fromService:
+          type: web
+          name: origin-server
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: orchestrator
+    env: node
+    rootDir: orchestrator
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: ORIGIN_URL
+        fromService:
+          type: web
+          name: origin-server
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: EDGE1_URL
+        fromService:
+          type: web
+          name: edge-node-1
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: EDGE2_URL
+        fromService:
+          type: web
+          name: edge-node-2
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_ORCHESTRATOR_URL
+        fromService:
+          type: web
+          name: orchestrator
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_ORIGIN_URL
+        fromService:
+          type: web
+          name: origin-server
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_EDGE1_URL
+        fromService:
+          type: web
+          name: edge-node-1
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_EDGE2_URL
+        fromService:
+          type: web
+          name: edge-node-2
+          envVarKey: RENDER_EXTERNAL_URL

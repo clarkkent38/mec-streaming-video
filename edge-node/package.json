@@ -1,0 +1,16 @@
+{
+  "name": "edge-node",
+  "version": "1.0.0",
+  "description": "MEC Edge Node — caches DASH segments from origin, supports runtime delay + outage simulation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:node1": "PORT=4001 NODE_ID=edge-node-1 DELAY_MS=5 node server.js",
+    "start:node2": "PORT=4002 NODE_ID=edge-node-2 DELAY_MS=15 node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.7.0"
+  }
+}

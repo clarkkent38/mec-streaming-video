@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --metal-dark: #0d1117;
+  --metal-mid:  #111827;
+  --metal-light: #1e293b;
+  --brass: #f59e0b;
+  --led-green: #22c55e;
+  --led-red: #f43f5e;
+  --led-amber: #f59e0b;
+  --led-inactive: #1f2937;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100;
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #080b10;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Clean card ────────────────────────────────────────────────────────────── */
+.card {
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+}
+
+/* ── Backwards-compat aliases ──────────────────────────────────────────────── */
+.skeubrutal-panel {
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+}
+
+.skeubrutal-inset {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 6px;
+}
+
+.skeubrutal-button {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.skeubrutal-button:active {
+  box-shadow: 
+    inset 4px 4px 8px rgba(0,0,0,0.8),
+    inset -2px -2px 6px rgba(255,255,255,0.02);
+  transform: translateY(2px);
+  border-top: 1px solid rgba(0,0,0,0.6);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.crt-overlay {
+  position: relative;
+}
+.crt-overlay::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+      rgba(18, 16, 16, 0) 50%,
+      rgba(0, 0, 0, 0.25) 50%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 0, 0, 0.06),
+      rgba(0, 255, 0, 0.02),
+      rgba(0, 0, 255, 0.06)
+    );
+  z-index: 2;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+
+@keyframes ledPulseGreen {
+  0%   { box-shadow: 0 0 4px var(--led-green), inset 0 0 4px var(--led-green); background-color: #00aa22; }
+  50%  { box-shadow: 0 0 16px var(--led-green), inset 0 0 8px var(--led-green); background-color: var(--led-green); }
+  100% { box-shadow: 0 0 4px var(--led-green), inset 0 0 4px var(--led-green); background-color: #00aa22; }
+}
+
+@keyframes ledStrobeRed {
+  0%   { box-shadow: 0 0 16px var(--led-red), inset 0 0 8px var(--led-red); background-color: var(--led-red); }
+  49%  { box-shadow: 0 0 16px var(--led-red), inset 0 0 8px var(--led-red); background-color: var(--led-red); }
+  50%  { box-shadow: 0 0 2px var(--led-red), inset 0 0 2px var(--led-red); background-color: #550000; }
+  100% { box-shadow: 0 0 2px var(--led-red), inset 0 0 2px var(--led-red); background-color: #550000; }
+}
+
+@keyframes ledBlinkAmber {
+  0%   { box-shadow: 0 0 8px var(--led-amber), inset 0 0 4px var(--led-amber); background-color: var(--led-amber); }
+  50%  { box-shadow: 0 0 2px var(--led-amber), inset 0 0 2px var(--led-amber); background-color: #553300; }
+  100% { box-shadow: 0 0 8px var(--led-amber), inset 0 0 4px var(--led-amber); background-color: var(--led-amber); }
+}
+
+.led-green-pulse {
+  animation: ledPulseGreen 2s infinite ease-in-out;
+}
+.led-red-strobe {
+  animation: ledStrobeRed 0.5s infinite steps(1);
+}
+.led-amber-blink {
+  animation: ledBlinkAmber 1.5s infinite ease-in-out;
+}
+.led-green-steady {
+  background-color: #00aa22;
+  box-shadow: 0 0 4px var(--led-green), inset 0 0 4px var(--led-green);
+}
+.led-inactive {
+  background-color: var(--led-inactive);
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   TRON / ARCADE NETWORK TOPOLOGY STYLES
+   ───────────────────────────────────────────────────────────────────────────── */
+
+@keyframes wireFlow {
+  from { stroke-dashoffset: 20; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes glitch {
+  0% { transform: translate(0) skew(0deg); filter: hue-rotate(0deg); opacity: 1; }
+  2% { transform: translate(-2px, 1px) skew(2deg); filter: hue-rotate(90deg); opacity: 0.8; }
+  4% { transform: translate(2px, -1px) skew(-2deg); filter: hue-rotate(-90deg); opacity: 0.9; }
+  6% { transform: translate(0) skew(0deg); filter: hue-rotate(0deg); opacity: 1; }
+  100% { transform: translate(0) skew(0deg); filter: hue-rotate(0deg); opacity: 1; }
+}
+
+.wire-path {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke 0.3s ease;
+}
+
+.wire-glow {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  filter: blur(4px);
+  opacity: 0.6;
+  transition: stroke 0.3s ease;
+}
+
+.wire-active {
+  stroke-dasharray: 6 4;
+  animation: wireFlow 0.5s linear infinite;
+}
+
+.wire-color-origin {
+  stroke: #3b82f6; /* Blue */
+}
+
+.wire-color-edge1 {
+  stroke: #10b981; /* Green */
+}
+
+.wire-color-edge2 {
+  stroke: #f59e0b; /* Amber/Yellow for backup */
+}
+
+.wire-color-dead {
+  stroke: #334155; /* Slate */
+}
+
+.wire-color-error {
+  stroke: #e11d48; /* Rose */
+}
+
+.node-glitch {
+  animation: glitch 3s infinite;
+}
+
+.topology-container {
+  background: radial-gradient(circle at center, var(--metal-mid) 0%, var(--metal-dark) 100%);
+  background-image: 
+    radial-gradient(circle at center, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 30px 30px, 30px 30px;
+}

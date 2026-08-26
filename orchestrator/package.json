@@ -1,0 +1,15 @@
+{
+  "name": "orchestrator",
+  "version": "1.0.0",
+  "description": "VNF Orchestrator — health-checks edge nodes, routes to best node (paper §III VNFM concept)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test-scenarios": "node test-scenarios.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^2.7.0"
+  }
+}
