@@ -121,24 +121,32 @@ app.use('/dash', (req, res, next) => {
     // Optional: Log proxy requests if you want to track them
     // console.log(`[PROXY] Origin proxying to: ${targetUrl}`);
 
-    req.pipe(
-      require('https').request(targetUrl, {
-        method: req.method,
-        headers: {
-          ...req.headers,
-          host: 'dash.akamaized.net'
-        }
-      }, (proxyRes) => {
-        // Set CORS headers for the proxy response
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Headers', '*');
-        res.writeHead(proxyRes.statusCode, proxyRes.headers);
-        proxyRes.pipe(res);
-      })
-    ).on('error', (err) => {
-      console.error(`[PROXY ERROR] Origin: ${err.message}`);
-      res.status(502).json({ error: 'Proxy fetch failed', message: err.message });
+    const proxyReq = require('https').request(targetUrl, {
+      method: req.method,
+      headers: {
+        ...req.headers,
+        host: 'dash.akamaized.net'
+      }
+    }, (proxyRes) => {
+      // Set CORS headers for the proxy response
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
     });
+
+    proxyReq.on('error', (err) => {
+      console.error(`[PROXY ERROR] Origin: ${err.message}`);
+      if (!res.headersSent) {
+        res.status(502).json({ error: 'Proxy fetch failed', message: err.message });
+      }
+    });
+
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+      req.pipe(proxyReq);
+    } else {
+      proxyReq.end();
+    }
     return;
   }
 
