@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNF Edge Streamer - User Manual</title>
+    <style>
+        :root {
+            --bg-color: #09090b;
+            --panel-bg: #18181b;
+            --border-color: #27272a;
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            
+            --accent-blue: #3b82f6;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #ef4444;
+            --accent-purple: #8b5cf6;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        h1, h2, h3 {
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 50px;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h2::before {
+            content: "/>";
+            font-family: monospace;
+            color: var(--border-color);
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            margin-top: 30px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .glossary-term {
+            font-family: monospace;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--accent-emerald);
+        }
+
+        .flex-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: #121214;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-purple);
+        }
+
+        .card.red { border-left-color: var(--accent-rose); }
+        .card.yellow { border-left-color: var(--accent-amber); }
+        .card.green { border-left-color: var(--accent-emerald); }
+        .card.blue { border-left-color: var(--accent-blue); }
+
+        code {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #e4e4e7;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--panel-bg);
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .highlight {
+            color: var(--accent-amber);
+            font-weight: bold;
+        }
+
+        .note {
+            background-color: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-left: 4px solid var(--accent-blue);
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>VNF Edge Streamer<br><span style="font-size: 1.2rem; color: var(--text-muted); font-weight: normal;">Context-Aware MEC + NFV Simulator - Official Manual</span></h1>
+
+    <div class="note">
+        <strong>How to save as PDF:</strong> Open this file in Google Chrome or Edge. Press <code>Ctrl + P</code> (or Cmd + P), select "Save as PDF", and ensure <strong>"Background Graphics"</strong> is checked under "More settings" to preserve the dark mode colors!
+    </div>
+
+    <!-- GLOSSARY SECTION -->
+    <h2>1. Glossary & Abbreviations</h2>
+    <div class="panel">
+        <p>This simulator models advanced telecommunications architecture. Here are the core acronyms used in the system:</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Abbreviation</th>
+                    <th>Full Form</th>
+                    <th>Explanation in the Simulator</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="glossary-term">MEC</td>
+                    <td>Multi-Access Edge Computing</td>
+                    <td>Moving server resources out of the central cloud and putting them physically closer to the user (e.g., in a local cell tower or ISP facility) to achieve ultra-low latency.</td>
+                </tr>
+                <tr>
+                    <td class="glossary-term">NFV</td>
+                    <td>Network Function Virtualization</td>
+                    <td>Replacing physical hardware routers and load balancers with software running on standard servers. Allows the Orchestrator to instantly "spin up" or reroute traffic via software.</td>
+                </tr>
+                <tr>
+                    <td class="glossary-term">VNF</td>
+                    <td>Virtual Network Function</td>
+                    <td>A specific software application running in the NFV architecture. In our app, the Edge Nodes acting as caching video servers are VNFs.</td>
+                </tr>
+                <tr>
+                    <td class="glossary-term">VNFM</td>
+                    <td>VNF Manager / Orchestrator</td>
+                    <td>The brain of the system. It monitors the health (latency/status) of all VNFs and decides which node the user should connect to.</td>
+                </tr>
+                <tr>
+                    <td class="glossary-term">DASH</td>
+                    <td>Dynamic Adaptive Streaming over HTTP</td>
+                    <td>The video streaming protocol used. The video is chopped into tiny 2-second segments.</td>
+                </tr>
+                <tr>
+                    <td class="glossary-term">ABR</td>
+                    <td>Adaptive Bitrate</td>
+                    <td>An algorithm in the video player that continuously calculates network speed and decides whether to fetch a High-Quality (4K) or Low-Quality (720p) segment next.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ARCHITECTURE EXPLANATION -->
+    <h2>2. What is Actually Happening? (The Architecture)</h2>
+    <p>When you press "Play" on the video, a complex sequence of decisions is made in milliseconds. Here is the step-by-step scientific breakdown of the data stream:</p>
+
+    <div class="flex-grid">
+        <div class="card blue">
+            <h3 style="margin-top: 0; color: var(--accent-blue);">1. The Origin Server (Cloud)</h3>
+            <p>The <strong>Origin Server</strong> is located in a distant centralized cloud data center. It holds the "master" copy of the 4K video. Because it is physically far away, the latency is very high (<span class="highlight">~150ms delay</span>). Streaming 4K directly from here causes buffering.</p>
+        </div>
+        
+        <div class="card purple">
+            <h3 style="margin-top: 0; color: var(--accent-purple);">2. The Edge Nodes (MEC)</h3>
+            <p><strong>Edge Node 1</strong> and <strong>Edge Node 2</strong> are localized servers situated near the user's city. They act as "proxies" or caches. When a user requests a video segment, they fetch it from the Origin, cache it, and deliver it to the user with ultra-low latency (<span class="highlight">~5ms to 15ms delay</span>).</p>
+        </div>
+
+        <div class="card green">
+            <h3 style="margin-top: 0; color: var(--accent-emerald);">3. The Orchestrator (VNFM)</h3>
+            <p>The <strong>Orchestrator</strong> acts as a load-balancer. Every 2 seconds, it pings the Edge Nodes. If Edge Node 1 catches on fire (Outage) or gets congested (Degraded), the Orchestrator instantly updates its routing table and instructs the Client to fetch the next video segment from Edge Node 2.</p>
+        </div>
+    </div>
+
+    <!-- UI & METRICS -->
+    <h2>3. Telemetry & Live Stats (What the numbers mean)</h2>
+    <div class="panel">
+        <p>The dashboard on the right side provides real-time analytics of both the video player's ABR algorithm and the advanced MEC Engine. Here is a comprehensive breakdown of all parameters:</p>
+        
+        <h3 style="color: var(--accent-blue); margin-top: 15px;">Standard Telemetry</h3>
+        <ul>
+            <li><strong style="color: var(--accent-emerald);">Resolution & Bitrate:</strong> If the network is healthy, the player requests <strong>1080p or 4K</strong>. If the network degrades, it drops to <strong>720p or 480p</strong> to prevent buffering.</li>
+            <li><strong style="color: var(--accent-blue);">Buffer Health (Seconds):</strong> Shows how many seconds of video are pre-loaded in memory. <strong>Healthy: 10-15 seconds</strong>. <strong>Critical: < 3 seconds</strong>.</li>
+            <li><strong style="color: var(--accent-amber);">Throughput / Bandwidth Utilization:</strong> The literal download speed (kbps) the browser is achieving. MEC nodes provide high throughput; Origin servers provide lower throughput due to distance.</li>
+            <li><strong style="color: var(--accent-rose);">Stalls & Dropped Frames:</strong> A "stall" means the video froze because the Buffer Health hit 0.0s. "Dropped frames" happen when the device CPU struggles or data arrives corrupted.</li>
+            <li><strong style="color: var(--text-muted);">Segment Download Time:</strong> How long it takes to download one 2-second chunk of video. Must remain under 2 seconds to avoid stalls.</li>
+            <li><strong style="color: var(--text-muted);">Quality Switches:</strong> The number of times the video jumped up or down in resolution. A good connection minimizes unnecessary quality switching.</li>
+        </ul>
+
+        <h3 style="color: var(--accent-purple); margin-top: 25px;">Network Quality Metrics</h3>
+        <ul>
+            <li><strong style="color: var(--accent-purple);">RTT (Round Trip Time):</strong> The total time (in milliseconds) it takes for a data packet to travel from the client to the server and back. Lower RTT = Better Streaming.</li>
+            <li><strong style="color: var(--accent-purple);">Jitter:</strong> The variance or fluctuation in latency over time. High jitter causes unpredictable buffer drains.</li>
+            <li><strong style="color: var(--accent-rose);">Packet Loss:</strong> The percentage of data packets that get lost in transit and must be re-requested, heavily impacting throughput.</li>
+            <li><strong style="color: var(--accent-amber);">Network Cost:</strong> A simulated value representing the financial or bandwidth penalty of streaming from the distant Origin Server vs. the cheap local Edge Node.</li>
+        </ul>
+
+        <h3 style="color: var(--accent-emerald); margin-top: 25px;">MEC FMDASH+ Engine (Advanced NFV)</h3>
+        <ul>
+            <li><strong style="color: var(--accent-emerald);">Shannon Entropy (H):</strong> A mathematical measure of unpredictability in the network. If the network is fluctuating wildly (high jitter), entropy increases, and the MEC Engine switches to a more conservative streaming profile.</li>
+            <li><strong style="color: var(--accent-emerald);">Traceback Window (k):</strong> The number of previous video segments the AI is analyzing to predict future network conditions.</li>
+            <li><strong style="color: var(--accent-emerald);">Smoothed Bandwidth:</strong> The rolling average of throughput, ignoring sudden, temporary spikes or dips (using exponential smoothing).</li>
+            <li><strong style="color: var(--accent-emerald);">MEC ABR Decision:</strong> The maximum video bitrate the Edge Node recommends the client to fetch, calculated using Fuzzy Logic.</li>
+            <li><strong style="color: var(--accent-emerald);">Fuzzy BW & Fuzzy BUF:</strong> Real-time Fuzzy Logic categorizations. The engine constantly evaluates if Bandwidth (BW) and Buffer (BUF) are in a 'Low', 'Medium', or 'High' state, visually represented by the colored indicator bars.</li>
+            <li><strong style="color: var(--text-muted);">Edge Node CPU & Memory:</strong> Simulates the hardware strain on the local VNF container.</li>
+            <li><strong style="color: var(--text-muted);">Transcoding Latency:</strong> The time taken by the Edge Node to process and deliver the video segment payload.</li>
+        </ul>
+    </div>
+
+    <!-- BUTTONS & SCENARIOS -->
+    <h2>4. How to use the Demo Control Panel</h2>
+    <p>Use the bottom-left panel to inject chaos into the network and watch how the Orchestrator and Video Player respond.</p>
+
+    <div class="panel">
+        <div class="card green" style="margin-bottom: 15px;">
+            <h3 style="margin-top: 0;">✅ Good Edge</h3>
+            <p><strong>Action:</strong> Sets Edge 1 to 5ms and Edge 2 to 15ms.<br>
+            <strong>What happens:</strong> The Orchestrator routes you to Edge 1. You will see the Bitrate graph climb to maximum quality. Buffer health stays completely stable.</p>
+        </div>
+
+        <div class="card yellow" style="margin-bottom: 15px;">
+            <h3 style="margin-top: 0;">🟡 Degraded Edge</h3>
+            <p><strong>Action:</strong> Simulates a massive traffic spike on Edge 1, pushing its latency up to 80ms.<br>
+            <strong>What happens:</strong> The Orchestrator realizes Edge 1 is becoming slow. It dynamically fails over to Edge 2 (which is still at 15ms). The video does not buffer because the NFV switch happens seamlessly.</p>
+        </div>
+
+        <div class="card red" style="margin-bottom: 15px;">
+            <h3 style="margin-top: 0;">🔴 Edge Outage</h3>
+            <p><strong>Action:</strong> Utterly destroys Edge 1 (simulating a power failure).<br>
+            <strong>What happens:</strong> You will see a <span style="color: var(--accent-rose); font-weight: bold;">✕ LINK DEAD</span> indicator in the topology. The client's current segment download fails, throwing an error. The player immediately asks the Orchestrator for a backup route, and reconnects to Edge 2. The Buffer Health graph will likely take a massive dip during the recovery time!</p>
+        </div>
+
+        <div class="card blue" style="margin-bottom: 15px;">
+            <h3 style="margin-top: 0;">🔵 Direct Only (Bypass MEC)</h3>
+            <p><strong>Action:</strong> Disables edge computing entirely. Forces the player to fetch from the Origin.<br>
+            <strong>What happens:</strong> Latency jumps to 150ms+. You will visibly see the Throughput crash and the Buffer Health drain rapidly. The ABR algorithm will severely downgrade the video quality to survive.</p>
+        </div>
+
+        <div class="card" style="margin-bottom: 15px;">
+            <h3 style="margin-top: 0;">🔄 Restore All</h3>
+            <p><strong>Action:</strong> Resets all simulated disasters. Revives dead nodes and removes artificial latency.<br>
+            <strong>What happens:</strong> The network heals, returning to optimal 5ms MEC streaming.</p>
+        </div>
+    </div>
+
+</body>
+</html>
