@@ -24,7 +24,7 @@ const os      = require('os');
 const PORT       = parseInt(process.env.PORT      || '3000', 10);
 const NODE_LABEL = process.env.NODE_LABEL         || 'origin';
 const BIND_HOST  = process.env.BIND_HOST          || '0.0.0.0';
-const AKAMAI_PROXY = process.env.AKAMAI_PROXY === 'true';
+const AKAMAI_PROXY = process.env.AKAMAI_PROXY !== 'false';
 
 const DASH_DIR   = path.join(__dirname, 'dash-output');
 const MEDIA_DIR  = path.join(__dirname, 'media');

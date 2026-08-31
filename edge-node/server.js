@@ -31,7 +31,7 @@ const PORT       = parseInt(process.env.PORT       || '4001', 10);
 const NODE_ID    = process.env.NODE_ID             || 'edge-node-1';
 const BIND_HOST  = process.env.BIND_HOST           || '0.0.0.0';
 const ORIGIN_URL = (process.env.ORIGIN_URL         || 'http://localhost:3000').replace(/\/$/, '');
-const AKAMAI_PROXY = process.env.AKAMAI_PROXY === 'true';
+const AKAMAI_PROXY = process.env.AKAMAI_PROXY !== 'false';
 
 // In-memory state — all mutable at runtime via endpoints
 let currentDelayMs = parseInt(process.env.DELAY_MS || '5', 10);

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import dashjs from 'dashjs';
-import LiveStatsPanel from './LiveStatsPanel';
+import PaperGraphsDashboard from './PaperGraphsDashboard';
+import MiniVideoPlayer from './MiniVideoPlayer';
 import ScenarioPanel from './ScenarioPanel';
 import EdgeNodeLEDs from './EdgeNodeLEDs';
 import NetworkTopology from './NetworkTopology';
 import { useEdgeRouter } from './useEdgeRouter';
+import { usePlayerTelemetry } from './usePlayerTelemetry';
 import { ORIGIN_MANIFEST, IS_LAN_MODE } from './config';
 
 export default function App() {
@@ -15,11 +17,22 @@ export default function App() {
   const [playerReady,  setPlayerReady]  = useState(false);
   const [globalError,  setGlobalError]  = useState(null);
   const [connError,    setConnError]    = useState(null);
-  const [qualityBadge, setQualityBadge] = useState(null); // { label, visible }
+  const [qualityBadge, setQualityBadge] = useState(null);
   const qualityTimerRef = useRef(null);
 
   const { manifestUrl, activeNode, routeLog, resolveManifest, handleSegmentError } =
     useEdgeRouter(isEdgeMode);
+
+  // Hook for research metrics & publication time-series
+  const {
+    graphData,
+    stats,
+    mecStats,
+    qualities,
+    selectedQuality,
+    setSelectedQuality,
+    resetGraphData
+  } = usePlayerTelemetry(playerRef, playerReady, isEdgeMode, activeNode);
 
   // ── Player initialisation / re-init ────────────────────────────────────────
   const initPlayer = useCallback(async (url) => {
@@ -101,65 +114,93 @@ export default function App() {
     };
   }, [isEdgeMode, resolveManifest, initPlayer]);
 
-  const logColor = (type) => ({
-    info:    'text-slate-400',
-    success: 'text-emerald-400',
-    warn:    'text-amber-400',
-    error:   'text-rose-400',
-  }[type] || 'text-slate-400');
-
-  const logBg = (type) => ({
-    info:    'bg-slate-800/60',
-    success: 'bg-emerald-900/30',
-    warn:    'bg-amber-900/30',
-    error:   'bg-rose-900/30',
-  }[type] || 'bg-slate-800/60');
-
   return (
-    <div className="min-h-screen p-4 md:p-6 overflow-hidden relative">
+    <div className="min-h-screen p-3 md:p-4 text-zinc-100 bg-zinc-950 font-sans selection:bg-blue-600 selection:text-white">
 
+      {/* LAN Warning banner if active */}
       {IS_LAN_MODE && (
-        <div className="w-full max-w-[90rem] mx-auto mb-3 flex items-center gap-2 skeubrutal-panel text-zinc-400 text-xs px-4 py-2 rounded-lg relative z-10">
+        <div className="w-full max-w-[100rem] mx-auto mb-2.5 flex items-center gap-2 skeubrutal-panel text-zinc-400 text-xs px-3 py-1.5 rounded-lg border border-zinc-800">
           <span>📡</span>
-          <span><strong>LAN Mode active</strong> — frontend is accessible on your local network. Make sure firewall allows ports 3000, 4001, 4002, 5000, 5173.</span>
+          <span><strong>LAN Mode active</strong> — Accessible on local network. Ensure ports 3000, 4001, 4002, 5000, 5173 are open.</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="w-full max-w-[90rem] mx-auto mb-3 relative z-10 flex justify-between items-center">
+      {/* Main Header */}
+      <header className="w-full max-w-[100rem] mx-auto mb-2.5 flex flex-wrap justify-between items-center gap-2 border-b border-zinc-800/80 pb-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-zinc-100 tracking-tight">
-            VNF <span className="text-zinc-400 font-normal">Edge Streamer</span>
+          <h1 className="text-base md:text-lg font-bold text-zinc-100 tracking-tight flex items-center gap-2">
+            <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-xs tracking-wider uppercase font-mono">VNF-MEC</span>
+            <span>Adaptive Edge Streamer</span>
           </h1>
-          <span className="text-zinc-500 text-xs font-mono hidden md:inline ml-2">Adaptive DASH · Context-Aware MEC + NFV</span>
+          <span className="text-zinc-500 text-xs font-mono hidden md:inline border-l border-zinc-800 pl-3">
+            NFV Orchestration & FMDASH+ Adaptive Telemetry Suite
+          </span>
         </div>
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Akamai_logo.svg/512px-Akamai_logo.svg.png" className="h-3 opacity-20 grayscale hidden md:block" alt="Powered by Akamai" />
-      </div>
 
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono">
+            <span className="text-zinc-500">Route Status:</span>
+            <span className={`font-bold ${isEdgeMode ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {isEdgeMode ? '⚡ MEC Acceleration Active' : '☁ Direct Cloud Origin'}
+            </span>
+          </div>
+          <span className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 hidden lg:inline">
+            IEEE / ACM Evaluation Suite
+          </span>
+        </div>
+      </header>
+
+      {/* Global Error Banner */}
       {globalError && (
-        <div className="w-full max-w-[90rem] mx-auto mb-4 bg-amber-900/40 border border-amber-600/50 text-amber-200 px-4 py-3 rounded-lg text-sm flex justify-between relative z-10">
+        <div className="w-full max-w-[100rem] mx-auto mb-3 bg-amber-900/40 border border-amber-600/50 text-amber-200 px-4 py-2 rounded-lg text-xs flex justify-between items-center">
           <span>⚠ {globalError}</span>
-          <button onClick={() => setGlobalError(null)} className="text-amber-400 hover:text-white ml-4">✕</button>
+          <button onClick={() => setGlobalError(null)} className="text-amber-400 hover:text-white font-bold ml-4">✕</button>
         </div>
       )}
 
-      {/* Main layout */}
-      <div className="w-full max-w-[90rem] mx-auto relative z-10">
+      {/* Main Container */}
+      <main className="w-full max-w-[100rem] mx-auto flex flex-col gap-2.5">
         
-        {/* LED Strip Component */}
+        {/* Node LED Strip */}
         <EdgeNodeLEDs activeNodeId={activeNode?.id || 'origin'} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1.7fr_0.9fr] gap-4 items-start">
+        {/* Responsive Grid: Left Column (Small Video + Controls) vs Right Column (Big Paper Graphs) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[330px_1fr] xl:grid-cols-[360px_1fr] gap-3 items-start">
 
-          {/* LEFT COLUMN: Topology + Scenarios */}
-          <div className="flex flex-col gap-2 h-[80vh]">
-            {/* TRON NETWORK TOPOLOGY MAP */}
-            <NetworkTopology 
-              isEdgeMode={isEdgeMode} 
-              activeNodeId={activeNode?.id || 'origin'} 
+          {/* ═══════════════════════════════════════════════════════════════════
+              LEFT COLUMN: VERY SMALL VIDEO STREAMING + NETWORK CONTROLS
+             ═══════════════════════════════════════════════════════════════════ */}
+          <aside className="flex flex-col gap-2.5 w-full">
+            
+            {/* 1. Small Video Player */}
+            <MiniVideoPlayer
+              videoRef={videoRef}
+              playerRef={playerRef}
+              isEdgeMode={isEdgeMode}
+              setIsEdgeMode={setIsEdgeMode}
+              activeNode={activeNode}
+              qualityBadge={qualityBadge}
+              connError={connError}
+              onRetry={() => resolveManifest().then(url => url && initPlayer(url))}
+              qualities={qualities}
+              selectedQuality={selectedQuality}
+              setSelectedQuality={setSelectedQuality}
+              stats={stats}
             />
 
-            {/* Scenario Panel */}
+            {/* 2. Network Topology Flow Map */}
+            <div className="card p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/90 shadow-sm">
+              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
+                <span>Network Data Plane</span>
+                <span className="text-[9px] text-zinc-500">SVG Topology</span>
+              </div>
+              <NetworkTopology 
+                isEdgeMode={isEdgeMode} 
+                activeNodeId={activeNode?.id || 'origin'} 
+              />
+            </div>
+
+            {/* 3. Scenario Panel */}
             <ScenarioPanel
               onScenarioRun={(id) => {
                 if (isEdgeMode) {
@@ -169,113 +210,49 @@ export default function App() {
                 }
               }}
             />
-          </div>
 
-          {/* CENTER COLUMN: Toggle + Video + Log */}
-          <div className="flex flex-col gap-2">
-            {/* Super minimal top row: Acceleration + Quality Portal */}
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-3">
-                <span className="text-slate-300 font-bold uppercase tracking-wider text-sm flex items-center gap-2">
-                  <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                  Acceleration
-                </span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className={`text-sm font-medium transition-colors ${!isEdgeMode ? 'text-zinc-100' : 'text-zinc-500'}`}>
-                  Direct
-                </span>
-                
-                {/* Shadcn style toggle */}
-                <button
-                  id="mode-toggle"
-                  onClick={() => setIsEdgeMode(m => !m)}
-                  className={`w-11 h-6 rounded-full transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 ${isEdgeMode ? 'bg-zinc-100' : 'bg-zinc-800'}`}
-                >
-                  <div className={`w-5 h-5 rounded-full absolute top-[2px] transition-transform duration-200 bg-white shadow-sm ${isEdgeMode ? 'translate-x-[22px] bg-zinc-900' : 'translate-x-[2px]'}`}>
-                  </div>
-                </button>
-                <span className={`text-sm font-medium transition-colors ${isEdgeMode ? 'text-zinc-100' : 'text-zinc-500'}`}>
-                  MEC Engine
-                </span>
-              </div>
-              <div id="quality-container"></div>
-            </div>
-
-            {/* Video or Error */}
-            {connError ? (
-              <div className="skeubrutal-panel border border-rose-700 rounded-xl p-12 text-center aspect-video flex flex-col items-center justify-center">
-                <div className="text-5xl mb-4">🔌</div>
-                <div className="text-rose-300 font-bold text-xl mb-2">Connection Failed</div>
-                <div className="text-rose-400 text-sm mb-6 max-w-md">{connError}</div>
-                <button
-                  onClick={() => resolveManifest().then(url => url && initPlayer(url))}
-                  className="skeubrutal-button px-6 py-2.5 text-white font-bold rounded-lg text-sm"
-                >
-                  ↻ RETRY CONNECTION
-                </button>
-              </div>
-            ) : (
-              /* Video player — clean flat container */
-              <div
-                className="rounded-xl overflow-hidden border border-white/10 bg-black w-[90%] mx-auto relative"
-                style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
-              >
-                <video
-                  ref={videoRef}
-                  controls
-                  autoPlay
-                  muted
-                  className="w-full aspect-video outline-none block"
-                />
-                {/* Quality badge overlay */}
-                {qualityBadge && (
-                  <div style={{
-                    position: 'absolute', top: 10, right: 10,
-                    background: 'rgba(0,0,0,0.75)',
-                    backdropFilter: 'blur(6px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 6, padding: '4px 10px',
-                    fontSize: 11, fontFamily: 'monospace', fontWeight: 700,
-                    color: '#e2e8f0', zIndex: 30,
-                    animation: 'fadeIn 0.2s ease',
-                  }}>
-                    📺 {qualityBadge}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Graphs Portal Target */}
-            <div id="graphs-container" className="flex gap-2 w-full mt-1"></div>
-
-            {/* Routing event log */}
-            <div className="card rounded-xl p-3 flex-1 min-h-[90px] mt-1 border-zinc-800">
-              <h3 className="text-[10px] font-medium uppercase tracking-widest text-zinc-400 mb-2 flex items-center gap-2">
-                Terminal
+            {/* 4. Terminal / Routing Event Log */}
+            <div className="card p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/90 shadow-sm">
+              <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-1.5 flex items-center justify-between">
+                <span>Routing & Telemetry Log</span>
+                <span className="text-[9px] text-zinc-500 font-mono">dash.js / vnfm</span>
               </h3>
               {routeLog.length === 0 ? (
-                <p className="text-zinc-600 text-[10px] font-mono">waiting for telemetry...</p>
+                <p className="text-zinc-600 text-[10px] font-mono py-2">waiting for telemetry events...</p>
               ) : (
-                <div className="space-y-1 h-[80px] overflow-y-auto pr-1 font-mono text-[10px] leading-tight">
+                <div className="space-y-1 max-h-[110px] overflow-y-auto pr-1 font-mono text-[10px] leading-tight">
                   {routeLog.map(entry => (
-                    <div key={entry.id} className={`flex gap-2 px-2 py-1 rounded bg-zinc-900/50`}>
+                    <div key={entry.id} className="flex gap-1.5 px-1.5 py-0.5 rounded bg-zinc-950/70 border border-zinc-800/40">
                       <span className="text-zinc-500 shrink-0">[{entry.ts}]</span>
-                      <span className="text-zinc-300">» {entry.message}</span>
+                      <span className={entry.type === 'success' ? 'text-emerald-400' : (entry.type === 'error' ? 'text-rose-400' : 'text-zinc-300')}>
+                        » {entry.message}
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </div>
 
-          {/* RIGHT COLUMN: Stats for Nerds */}
-          <div className="h-full min-h-[600px] flex flex-col">
-            <LiveStatsPanel playerRef={playerRef} playerReady={playerReady} />
-          </div>
+          </aside>
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              RIGHT / MAIN AREA: BIG RESEARCH PAPER GRAPHS SHOWCASE
+             ═══════════════════════════════════════════════════════════════════ */}
+          <section className="w-full">
+            <PaperGraphsDashboard
+              graphData={graphData}
+              stats={stats}
+              mecStats={mecStats}
+              isEdgeMode={isEdgeMode}
+              activeNode={activeNode}
+              onReset={resetGraphData}
+            />
+          </section>
 
         </div>
-      </div>
+
+      </main>
+
     </div>
   );
 }

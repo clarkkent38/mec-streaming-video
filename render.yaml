@@ -5,6 +5,9 @@ services:
     rootDir: origin-server
     buildCommand: npm install
     startCommand: node server.js
+    envVars:
+      - key: AKAMAI_PROXY
+        value: "true"
     
   - type: web
     name: edge-node-1
@@ -15,6 +18,8 @@ services:
     envVars:
       - key: NODE_ID
         value: edge-node-1
+      - key: AKAMAI_PROXY
+        value: "true"
       - key: ORIGIN_URL
         fromService:
           type: web
@@ -30,6 +35,8 @@ services:
     envVars:
       - key: NODE_ID
         value: edge-node-2
+      - key: AKAMAI_PROXY
+        value: "true"
       - key: DELAY_MS
         value: 15
       - key: ORIGIN_URL
