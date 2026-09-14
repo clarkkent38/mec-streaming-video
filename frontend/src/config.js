@@ -11,8 +11,8 @@ const isCloudDeploy = typeof window !== 'undefined' &&
   window.location.hostname !== '127.0.0.1';
 
 // Production Render backend defaults
-export const RENDER_ORCHESTRATOR = 'https://orchestrator-xfwd.onrender.com';
-export const RENDER_ORIGIN       = 'https://origin-server-h42h.onrender.com';
+export const RENDER_ORCHESTRATOR = 'https://mec-orchestrator.onrender.com';
+export const RENDER_ORIGIN       = 'https://mec-origin-server.onrender.com';
 
 // Central Orchestrator URL (VNFM Controller)
 export const ORCHESTRATOR_URL = import.meta.env.VITE_ORCHESTRATOR_URL || 
