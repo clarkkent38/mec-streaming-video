@@ -1,20 +1,19 @@
 /**
  * src/useEdgeRouter.js
  *
- * React hook — manages edge routing, failover, and the routing event log.
+ * React hook — manages dynamic edge routing, failover, and the routing event log.
  *
  * Behaviour:
- *  - Direct mode:  returns origin manifest URL immediately, no orchestrator call.
- *  - Edge mode:    calls GET /best-node → uses returned edge node URL for manifest.
- *                  If a segment fetch fails (detected via dash.js ERROR event),
- *                  re-calls /best-node and switches to next available node.
- *                  Every routing decision is appended to a visible event log.
+ *  - Direct mode:  returns origin manifest URL immediately, no edge routing.
+ *  - Edge mode:    calls GET /api/orchestrator/best-edge to get the best online edge.
+ *                  If zero edges are registered or online, falls back gracefully to Origin.
+ *                  If a segment fetch fails, re-queries /best-edge and switches nodes.
  *
  * Returns: { manifestUrl, activeNode, routeLog, resolveManifest, handleSegmentError }
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { ORIGIN_MANIFEST, ORCHESTRATOR_URL } from './config';
+import { ORIGIN_MANIFEST, ORCHESTRATOR_URL, getEdgeManifestUrl } from './config';
 
 function ts() {
   return new Date().toLocaleTimeString('en-GB', { hour12: false });
@@ -25,9 +24,8 @@ export function useEdgeRouter(isEdgeMode) {
   const [activeNode,  setActiveNode]    = useState(null);
   const [routeLog,    setRouteLog]      = useState([]);
   const failingRef    = useRef(false);   // debounce concurrent failover calls
-  const activeNodeRef = useRef(null);    // mirror of activeNode — avoids stale closure in handleSegmentError
+  const activeNodeRef = useRef(null);    // mirror of activeNode to avoid stale closure
 
-  // Keep ref in sync whenever state updates
   const setActiveNodeBoth = useCallback((node) => {
     activeNodeRef.current = node;
     setActiveNode(node);
@@ -39,98 +37,114 @@ export function useEdgeRouter(isEdgeMode) {
       ts:   ts(),
       type, // 'info' | 'success' | 'warn' | 'error'
       message,
-    }, ...prev].slice(0, 30)); // keep last 30 entries
+    }, ...prev].slice(0, 30));
   }, []);
 
   // ── resolveManifest ────────────────────────────────────────────────────────
-  // Called on mount or when the mode toggle changes.
-  // Returns the manifest URL string (also sets state).
-
   const resolveManifest = useCallback(async () => {
     if (!isEdgeMode) {
-      appendLog('info', 'Direct Mode — fetching from origin');
-      setActiveNodeBoth({ id: 'origin', url: ORIGIN_MANIFEST, delay_ms: null });
+      appendLog('info', 'Direct Mode — Streaming directly from Origin Cloud');
+      setActiveNodeBoth({
+        id: 'origin',
+        edgeId: 'origin',
+        label: 'Origin Server (Cloud)',
+        url: ORIGIN_MANIFEST,
+        measuredLatencyMs: 150,
+        delay_ms: 150,
+      });
       setManifestUrl(ORIGIN_MANIFEST);
       return ORIGIN_MANIFEST;
     }
 
-    appendLog('info', 'Edge Mode — Context-Aware routing query to orchestrator…');
+    appendLog('info', 'Edge Mode — Querying VNFM Orchestrator for best edge…');
     try {
-      const contextPayload = {
-        device: 'mobile',
-        network: '5G',
-        location: 'US-East'
-      };
-      
-      const res  = await fetch(`${ORCHESTRATOR_URL}/context-route`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contextPayload)
-      });
+      // 1. Query dynamic best-edge endpoint
+      let res = await fetch(`${ORCHESTRATOR_URL}/api/orchestrator/best-edge`);
+      if (!res.ok) {
+        // Fallback to legacy /best-node if needed
+        res = await fetch(`${ORCHESTRATOR_URL}/best-node`);
+      }
+
       const data = await res.json();
 
-      if (!res.ok || data.error) {
-        appendLog('warn', `No edge nodes UP — falling back to origin. (${data.error || 'unknown'})`);
-        setActiveNodeBoth({ id: 'origin', url: ORIGIN_MANIFEST, delay_ms: null });
+      if (!res.ok || data.error || (!data.best_edge && !data.best_node)) {
+        appendLog('warn', `No edge nodes currently online — playing direct from origin. (${data.error || '0 edges online'})`);
+        setActiveNodeBoth({
+          id: 'origin',
+          edgeId: 'origin',
+          label: 'Origin Server (Cloud Fallback)',
+          url: ORIGIN_MANIFEST,
+          measuredLatencyMs: 150,
+          delay_ms: 150,
+          isFallback: true,
+        });
         setManifestUrl(ORIGIN_MANIFEST);
         return ORIGIN_MANIFEST;
       }
 
-      const node = data.best_node;
-      const url  = `${node.url}/dash/manifest.mpd`;
-      appendLog('success', `Routed to ${node.id} (delay=${node.delay_ms}ms) | Score: ${data.context_applied?.score || 'N/A'}`);
+      const node = data.best_edge || data.best_node;
+      const url  = getEdgeManifestUrl(node.url);
+      const latencyDisplay = node.measuredLatencyMs != null ? `${node.measuredLatencyMs}ms` : `${node.delay_ms || 5}ms`;
+
+      appendLog('success', `✓ Routed to ${node.label || node.edgeId || node.id} (RTT: ${latencyDisplay}) | Score: ${node.score || 'N/A'}`);
       setActiveNodeBoth(node);
       setManifestUrl(url);
       return url;
 
     } catch (err) {
       appendLog('error', `Orchestrator unreachable — falling back to origin. (${err.message})`);
-      setActiveNodeBoth({ id: 'origin', url: ORIGIN_MANIFEST, delay_ms: null });
+      setActiveNodeBoth({
+        id: 'origin',
+        edgeId: 'origin',
+        label: 'Origin Server (Cloud Fallback)',
+        url: ORIGIN_MANIFEST,
+        measuredLatencyMs: 150,
+        delay_ms: 150,
+        isFallback: true,
+      });
       setManifestUrl(ORIGIN_MANIFEST);
       return ORIGIN_MANIFEST;
     }
   }, [isEdgeMode, appendLog, setActiveNodeBoth]);
 
   // ── handleSegmentError ─────────────────────────────────────────────────────
-  // Called by App when dash.js fires a download error.
-  // Re-queries /context-route and returns the new manifest URL for player re-init.
-
-  // Uses activeNodeRef (not state) so this callback never needs to change identity
-  // even when the active node changes — this prevents the infinite re-render loop in App.jsx
   const handleSegmentError = useCallback(async () => {
     if (!isEdgeMode || failingRef.current) return null;
     failingRef.current = true;
 
-    appendLog('warn', '⚠ Segment download failed — initiating context-aware failover…');
+    appendLog('warn', '⚠ Segment download failed — initiating autonomous VNF failover…');
 
     try {
-      const contextPayload = {
-        device: 'mobile',
-        network: '5G',
-        location: 'US-East'
-      };
-
-      const res  = await fetch(`${ORCHESTRATOR_URL}/context-route`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contextPayload)
-      });
+      let res = await fetch(`${ORCHESTRATOR_URL}/api/orchestrator/best-edge`);
+      if (!res.ok) {
+        res = await fetch(`${ORCHESTRATOR_URL}/best-node`);
+      }
       const data = await res.json();
 
-      if (!res.ok || data.error) {
-        appendLog('error', `Failover failed — no UP nodes. Staying on origin. (${data.error})`);
+      if (!res.ok || data.error || (!data.best_edge && !data.best_node)) {
+        appendLog('error', `Failover: No other edge online. Switching to origin directly.`);
         failingRef.current = false;
-        return null;
+        setActiveNodeBoth({
+          id: 'origin',
+          edgeId: 'origin',
+          label: 'Origin Server (Cloud Fallback)',
+          url: ORIGIN_MANIFEST,
+          measuredLatencyMs: 150,
+          delay_ms: 150,
+          isFallback: true,
+        });
+        setManifestUrl(ORIGIN_MANIFEST);
+        return ORIGIN_MANIFEST;
       }
 
-      const node    = data.best_node;
-      const newUrl  = `${node.url}/dash/manifest.mpd`;
+      const node = data.best_edge || data.best_node;
+      const newUrl = getEdgeManifestUrl(node.url);
+      const latencyDisplay = node.measuredLatencyMs != null ? `${node.measuredLatencyMs}ms` : `${node.delay_ms || 5}ms`;
 
-      // Read from ref — avoids activeNode being a dep that causes re-renders
       if (node.url === activeNodeRef.current?.url) {
-        appendLog('warn', 'Failover: same node re-selected — may still be recovering.');
+        appendLog('warn', 'Failover: Same edge node re-selected — waiting for recovery.');
       } else {
-        appendLog('success', `✅ Failover complete → ${node.id} (delay=${node.delay_ms}ms) | Score: ${data.context_applied?.score || 'N/A'}`);
+        appendLog('success', `✅ Failover complete → ${node.label || node.edgeId || node.id} (RTT: ${latencyDisplay})`);
       }
 
       setActiveNodeBoth(node);
@@ -139,11 +153,21 @@ export function useEdgeRouter(isEdgeMode) {
       return newUrl;
 
     } catch (err) {
-      appendLog('error', `Failover error: ${err.message}`);
+      appendLog('error', `Failover error: ${err.message}. Falling back to origin.`);
       failingRef.current = false;
-      return null;
+      setActiveNodeBoth({
+        id: 'origin',
+        edgeId: 'origin',
+        label: 'Origin Server (Cloud Fallback)',
+        url: ORIGIN_MANIFEST,
+        measuredLatencyMs: 150,
+        delay_ms: 150,
+        isFallback: true,
+      });
+      setManifestUrl(ORIGIN_MANIFEST);
+      return ORIGIN_MANIFEST;
     }
-  }, [isEdgeMode, appendLog, setActiveNodeBoth]); // NO activeNode dep — uses ref instead
+  }, [isEdgeMode, appendLog, setActiveNodeBoth]);
 
   return { manifestUrl, activeNode, routeLog, resolveManifest, handleSegmentError };
 }

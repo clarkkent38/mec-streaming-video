@@ -24,12 +24,12 @@ export default function MiniVideoPlayer({
             Client Video Preview
           </span>
         </div>
-        <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider ${
+        <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider max-w-[150px] truncate ${
           isEdgeMode 
             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
             : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-        }`}>
-          {activeNode?.id || (isEdgeMode ? 'EDGE-1' : 'ORIGIN')}
+        }`} title={activeNode?.label || activeNode?.edgeId || (isEdgeMode ? 'MEC EDGE' : 'ORIGIN')}>
+          {activeNode?.label || activeNode?.edgeId || activeNode?.id || (isEdgeMode ? 'MEC EDGE' : 'ORIGIN')}
         </span>
       </div>
 

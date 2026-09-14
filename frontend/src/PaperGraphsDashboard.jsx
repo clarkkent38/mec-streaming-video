@@ -176,9 +176,15 @@ export default function PaperGraphsDashboard({
         <div style={{ background: theme.bgCard, borderColor: theme.border }} className="p-2.5 rounded-lg border flex flex-col justify-between">
           <div className="flex justify-between items-center">
             <span className="text-[10px] uppercase font-mono tracking-wider" style={{ color: theme.textMuted }}>RTT Latency</span>
-            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded font-mono ${isEdgeMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-              {isEdgeMode ? 'EDGE ACCELERATED' : 'ORIGIN BASELINE'}
-            </span>
+            <div className="flex items-center gap-1">
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono ${
+                activeNode?.simulatedDelayMs != null 
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}>
+                {activeNode?.simulatedDelayMs != null ? '⚡ SIMULATED INJECTION' : '● LIVE TIMED RTT'}
+              </span>
+            </div>
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-xl font-bold font-mono text-emerald-400">
@@ -189,7 +195,9 @@ export default function PaperGraphsDashboard({
             </span>
           </div>
           <div className="text-[10px] font-mono text-emerald-500 mt-0.5">
-            {isEdgeMode ? '↓ ~93% Latency vs Origin' : 'Unaccelerated Cloud Route'}
+            {isEdgeMode 
+              ? (activeNode?.simulatedDelayMs ? `Configured delay: ${activeNode.simulatedDelayMs}ms` : '↓ ~93% Latency vs Origin') 
+              : 'Unaccelerated Cloud Route (~150ms)'}
           </div>
         </div>
 

@@ -1,0 +1,13 @@
+{
+  "name": "pc-edge-agent",
+  "version": "1.0.0",
+  "description": "Self-registering MEC Edge Agent for distributed video caching and proxying",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}

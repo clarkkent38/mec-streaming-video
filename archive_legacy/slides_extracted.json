@@ -1,0 +1,479 @@
+[
+  {
+    "slide_num": 1,
+    "texts": [
+      "The Oxford College of Engineering",
+      "Department of Computer Science and Engineering",
+      "BCS786 - Project Phase –II /First Review",
+      "Edge-Based Video Streaming Optimization using VNF Orchestration",
+      "Batch-2",
+      "1. Smitha",
+      "2. Spoorthi",
+      "3. Trisha",
+      "Guided by",
+      "Prof Thendral",
+      "Date"
+    ],
+    "tables": [],
+    "pictures": [
+      "Picture 5",
+      "Picture 8"
+    ]
+  },
+  {
+    "slide_num": 2,
+    "texts": [
+      "Edge-Based Video Streaming Optimization",
+      "using NFV-Driven Mobile Edge",
+      "Computing (MEC) Orchestration",
+      "MEC Edge Nodes",
+      "Localized VNF Caching & Prefetch",
+      "NFV Orchestration",
+      "VNFM-Based Node Management",
+      "Context-Aware DASH",
+      "Fuzzy-Inspired Segment Prediction",
+      "Mobile Edge Computing",
+      "Network Function Virtualization",
+      "Adaptive Streaming (DASH)",
+      "Latency Reduction",
+      "Context-Awareness",
+      "Real-Time Prefetching",
+      "The Oxford College of Engineering                                                                               Project Phase – II                                                                                    Review – 1                Batch-2"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 3,
+    "texts": [
+      "Table of Contents",
+      "03",
+      "Abstract & Overview",
+      "04",
+      "Introduction",
+      "05",
+      "Problem Statement",
+      "06",
+      "Literature Review",
+      "07",
+      "System Architecture",
+      "08",
+      "System Design Diagrams",
+      "09",
+      "Mathematical & Predictive Formulation",
+      "10",
+      "Context-Aware Prefetching — Algo 1",
+      "11",
+      "Core System Components",
+      "12",
+      "Experimental Setup & Scenarios",
+      "13",
+      "Expected Performance — Table 1",
+      "14",
+      "Expected Scenario Results — Table 2",
+      "15",
+      "Discussion & Key Insights",
+      "16",
+      "Conclusion & References"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 4,
+    "texts": [
+      "Abstract & Overview",
+      "A process-level NFV/MEC simulation that moves DASH video segment caching and prediction to the network edge — targeting a 10% latency reduction over direct-to-core delivery, in line with the ICUFN 2018 reference paper's benchmark results.",
+      "Origin + Edge Node Pipeline",
+      "Origin server encodes and serves multi-bitrate DASH segments; edge-node processes cache and pre-fetch segments closer to the simulated client",
+      "Context-Aware Prediction",
+      "Buffer + bandwidth trend rule predicts the next segment/quality tier and pre-fetches it — a simplified stand-in for the paper's fuzzy-logic + entropy method",
+      "Orchestrator (VNFM Role)",
+      "Health-checks every edge node, exposes /best-node, and routes clients away from degraded or failed nodes in real time",
+      "Expected Outcome",
+      "Target: ~10% lower latency vs. direct mode · 3-node MEC simulation · zero-cost, no-Docker stack · single-laptop demoable"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 5,
+    "texts": [
+      "Introduction",
+      "Bringing Video Delivery Closer to the User via MEC + NFV",
+      "1",
+      "Ultra-high-quality (4K/8K) video streaming is becoming the multimedia standard, but current internet delivery suffers from long-distance network latency, bandwidth-fluctuation stalling, and limited mobile device resources.",
+      "2",
+      "Dynamic Adaptive Streaming over HTTP (DASH) adjusts video quality to bandwidth, but the client alone deciding each segment reacts only after conditions change — a structural limitation this project addresses.",
+      "3",
+      "Mobile Edge Computing (MEC) moves computation and caching to servers near the user, while Network Function Virtualization (NFV) lets these edge functions be deployed and managed flexibly, without dedicated hardware.",
+      "4",
+      "This project implements a process-level MEC/NFV simulation — origin server, edge nodes, and an orchestrator — with a context-aware component that predicts and pre-fetches the next DASH segment before the client asks.",
+      "5",
+      "Built entirely on free, open-source tools with no containerization — a deliberate, documented scoping choice to keep the system zero-cost, low-risk, and reliably demoable on a single laptop."
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 6,
+    "texts": [
+      "Problem Statement",
+      "Centralized, core-network-driven video delivery cannot simultaneously guarantee low latency, bandwidth efficiency, and playback stability for 4K/8K streaming — client-only adaptive logic reacts to network changes only after they happen.",
+      "High Core-Network Latency",
+      "Every request travels the full long-distance path to the origin server, adding latency on every segment even when the same content was just served to a nearby user.",
+      "Reactive, Client-Only ABR",
+      "Standard DASH clients pick the next segment only after buffer/bandwidth has already changed — there is no component anticipating what the client will need next.",
+      "No Fault-Tolerant Routing",
+      "A single origin server is a single point of failure — there is no mechanism to detect a degraded/failed edge server and reroute clients to a healthier one in real time."
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 7,
+    "texts": [
+      "Literature Review",
+      "MEC & Edge Computing Foundations",
+      "▸ Liang: Mobile Edge Computing — foundational MEC architecture and use cases",
+      "▸ Jiang et al.: Survey on MEC applied to video streaming — issues and challenges",
+      "▸ Mehrabi et al.: Device-enhanced MEC — caching and computation offload survey",
+      "▸ Sukhmani et al.: Edge caching & computing for 5G AR/VR and tactile internet",
+      "NFV & VNF Orchestration",
+      "▸ Hawilo et al.: NFV — state of the art, challenges, and vEPC implementation",
+      "▸ Eramo et al.: Service function chain routing & VNF instance migration",
+      "▸ Attaoui et al.: VNF and container placement — recent advances & trends",
+      "Adaptive Streaming (DASH & QoE)",
+      "▸ Kua, Armitage & Branch: Survey of rate adaptation techniques for DASH",
+      "▸ Seufert et al.: Survey on QoE of HTTP adaptive streaming",
+      "▸ Zhao et al.: User QoE improvement for DASH (MPEG-DASH)",
+      "▸ Vergados et al.: FDASH — fuzzy-based MPEG/DASH adaptation algorithm",
+      "▸ Toosi et al.: Management & orchestration of network slices in 5G/Fog/Edge",
+      "Context-Aware Prediction & Edge Delivery",
+      "▸ Ma et al.: Fuzzy-based adaptive streaming reducing DASH bitrate entropy (base paper's prior work)",
+      "▸ Erfanian: Optimizing QoE & latency of live streaming using edge computing",
+      "▸ Du et al.: MEC-assisted immersive VR streaming via deep reinforcement learning"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 8,
+    "texts": [
+      "System Architecture",
+      "From origin encoding through edge caching and prediction to orchestrated, fault-tolerant delivery — mapped directly to the paper's Core Network → VNFM → MEC Layer → UE flow",
+      "L1",
+      "Origin / Core Network",
+      "Layer",
+      "Node.js + Express origin server · FFmpeg-encoded multi-bitrate DASH segments · simulated long-distance delay (paper's “Core Network”)",
+      "L2",
+      "Orchestrator",
+      "(VNFM Role)",
+      "Node registry & health checks · /best-node routing decision · outage detection & failover · configurable per-node delay for test scenarios",
+      "L3",
+      "Edge Node",
+      "(VNF) Layer",
+      "Reverse-proxy caching of DASH segments · client buffer/bandwidth reporting · context-aware predictor · proactive pre-fetch before client request",
+      "L4",
+      "Client &",
+      "Dashboard Layer",
+      "React + dash.js player · live Recharts graphs (bitrate, buffer, prediction) · node-link latency map · Direct vs Edge mode toggle"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 9,
+    "texts": [
+      "System Design Diagrams",
+      "UML/DFD design set for Review Meeting-1 — Use Case, Class, Activity, State, DFD, and ER views of the edge-streaming system",
+      "Use Case Diagram",
+      "Class Diagram",
+      "Activity Diagram",
+      "State Diagram",
+      "Data Flow Diagram",
+      "ER Diagram"
+    ],
+    "tables": [],
+    "pictures": [
+      "Diagram 1",
+      "Diagram 2",
+      "Diagram 3",
+      "Diagram 4",
+      "Diagram 5",
+      "Diagram 6"
+    ]
+  },
+  {
+    "slide_num": 10,
+    "texts": [
+      "Mathematical & Predictive Formulation",
+      "(1) Buffer/Bandwidth Trend Smoothing",
+      "B̄ₜ  =  (1/k) Σᵢ₌₀ᵏ⁻¹ Bₜ₋ᵢ",
+      "B̄ₜ: smoothed reading · k: rolling window (5–10 reports) · mirrors the paper's moving-average step",
+      "(2) Next-Tier Prediction Rule",
+      "Qₜ₊₁  =  Qₜ  +  sign(ΔB̄) · sign(ΔW̄)",
+      "Qₜ₊₁: predicted next tier · ΔB̄, ΔW̄: trend deltas · explainable stand-in for the paper's fuzzy-logic method",
+      "(3) Prediction Accuracy",
+      "Accuracy  =  (Correct Prefetches / Total Prefetches) × 100%",
+      "Correct Prefetch: cached segment matched the real request · logged live via /edge-stats",
+      "(4) Edge vs Direct Latency Reduction",
+      "ΔL  =  ((L_direct − L_edge) / L_direct) × 100%",
+      "L_direct, L_edge: avg response time per mode · the headline “Edge is X% faster” dashboard number"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 11,
+    "texts": [
+      "Context-Aware Prefetching — Algorithm 1",
+      "Runs on each edge node: predicts the client's next DASH segment/tier from recent buffer & bandwidth trend, and pre-fetches it into cache before the client's real request arrives",
+      "Input:  Client stats stream C,  window size k,  cache store S",
+      "Output:  Updated cache S with pre-fetched segment",
+      "1:  Maintain rolling history H of last k (buffer, bandwidth) readings",
+      "2:  On each POST /client-stats event:",
+      "3:      Append new reading to H; drop oldest if |H| > k",
+      "4:      Compute B̄ₜ, W̄ₜ and trend deltas ΔB̄, ΔW̄    [Eq. 1]",
+      "5:      Predict next tier Qₜ₊₁ from ΔB̄, ΔW̄    [Eq. 2]",
+      "6:      segId ← next sequential segment index at tier Qₜ₊₁",
+      "7:      if segId not in cache S then",
+      "8:          Fetch segId from origin-server; store in S",
+      "9:          log PREFETCH(segId, timestamp)",
+      "10:     end if",
+      "11:     if client's actual request == segId then",
+      "12:         log PREDICTION_CORRECT; serve from cache S (HIT)",
+      "13:     else log PREDICTION_MISS; fetch actual request (MISS)",
+      "14: end on event",
+      "15: return S",
+      "Rolling window k = 5–10 readings · rule-based, fully explainable stand-in for the paper's fuzzy-logic + entropy predictor · every HIT/MISS/PREFETCH event timestamped for the live dashboard"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 12,
+    "texts": [
+      "Core System Components",
+      "Origin Server",
+      "Serves multi-bitrate DASH manifest + segments via Express",
+      "FFmpeg encodes source video into 720p/480p/360p tiers",
+      "CORS enabled for cross-origin frontend requests",
+      "Simulated long-distance delay via configurable DELAY_MS",
+      "Outputs: DASH manifest.mpd + .m4s segment files",
+      "Edge Node Cache",
+      "Accuracy = (Correct / Total) × 100%  — Eq. (3)",
+      "Reverse-proxy caches segments fetched from origin",
+      "Logs every request as HIT or MISS with timestamp",
+      "Applied to: cutting repeat-fetch latency for hot segments",
+      "Outputs: cached segment store + live /edge-stats JSON",
+      "Predictor Module",
+      "Qₜ₊₁ = Qₜ + sign(ΔB̄)·sign(ΔW̄)  — Eq. (2)",
+      "Rolling window of last 5–10 client stat reports",
+      "Captures short-term trend in client network conditions",
+      "Applied to: proactive segment pre-fetch before request",
+      "Outputs: PREFETCH + PREDICTION_CORRECT/MISS events",
+      "Orchestrator (VNFM)",
+      "ΔL = ((L_direct − L_edge)/L_direct) × 100%  — Eq. (4)",
+      "Health-checks all edge nodes on a fixed interval",
+      "Detects outages and reroutes clients via /best-node",
+      "Target latency: Direct ~150ms → Edge ~12ms",
+      "Outputs: live node registry + routing decisions"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 13,
+    "texts": [
+      "Experimental Setup & Test Scenarios",
+      "Test Content",
+      "Public-domain/CC test clip (e.g. Big Buck Bunny)",
+      "Encoded to 720p / 480p / 360p DASH representations",
+      "2-second segment duration · audio track included",
+      "No copyrighted commercial video used",
+      "Infrastructure",
+      "Single laptop · Node.js processes on separate ports",
+      "Origin + 3 edge nodes + orchestrator, no Docker",
+      "Zero-cost, open-source stack only",
+      "Combined footprint: well under a few hundred MB RAM",
+      "Test Scenario Presets",
+      "Good Edge: near nodes at 5–15ms delay",
+      "Degraded Edge: overloaded node at 80ms delay",
+      "Edge Outage: forced failure + orchestrator failover",
+      "Direct Only: baseline bypassing edge entirely",
+      "Evaluation Metrics",
+      "Average latency (ms) · Cache hit rate (%)",
+      "Prediction accuracy (%)",
+      "Memory/CPU footprint per process",
+      "Failover detection time (health-check cycles)",
+      "Baseline comparison:   Direct-to-Origin Mode   ·   Edge Mode (no prefetch)   ·   Edge Mode (context-aware prefetch)"
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 14,
+    "texts": [
+      "Expected Performance — Table 1",
+      "Table 1: Expected/target results (simulated environment) — to be validated once Phase 5 testing completes; not measured data",
+      "~90% Lower Latency",
+      "vs Direct Mode (simulated delays)",
+      "10–26% Real-World Range",
+      "Reported latency gain in reference paper",
+      "~85% Target Hit Rate",
+      "With context-aware prefetching enabled"
+    ],
+    "tables": [
+      [
+        [
+          "Delivery Mode",
+          "Avg Latency (ms) ↓",
+          "Cache Hit Rate (%) ↑",
+          "Prediction Accuracy (%) ↑",
+          "Memory (MB) ↓"
+        ],
+        [
+          "Direct Mode (no edge)",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Edge Mode (cache only)",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Edge Mode (context-aware)",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Target (3-node MEC)",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    ],
+    "pictures": []
+  },
+  {
+    "slide_num": 15,
+    "texts": [
+      "Expected Scenario Results — Table 2",
+      "Table 2: Target results per test scenario (Phase 4a presets) — to be measured once Phase 5 testing completes",
+      "Good Edge",
+      "Target: <15ms",
+      "~85% hit rate",
+      "All 3 nodes healthy — orchestrator auto-routes to lowest delay",
+      "Degraded Edge",
+      "~80ms",
+      "at busy node",
+      "One node simulates overload — orchestrator should prefer the healthy one",
+      "Edge Outage",
+      "<1 cycle",
+      "to detect",
+      "Forced failure — validates health-check detection & client failover"
+    ],
+    "tables": [
+      [
+        [
+          "Test Scenario",
+          "Node Delay (ms)",
+          "Cache Hit Rate ↑",
+          "Avg Latency (ms) ↓",
+          "Failover Time (s) ↓"
+        ],
+        [
+          "Good Edge (healthy nodes)",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Degraded Edge (busy node)",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Edge Outage (node down)",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    ],
+    "pictures": []
+  },
+  {
+    "slide_num": 16,
+    "texts": [
+      "Discussion & Key Insights",
+      "Context-Aware Prefetching Is the Core Differentiator",
+      "Passive edge caching alone helps, but predicting and pre-fetching the next segment before the client asks is what the reference paper's fuzzy-logic component actually contributes — our simplified trend rule targets the same effect.",
+      "Process-Level Isolation Removes the Docker Risk",
+      "Running each edge node as an independent Node.js process gives the same start/stop/scale isolation NFV requires, without Docker Desktop's documented Windows virtualization/BSOD risk — a deliberate, explained scoping choice.",
+      "Simulated Delay Isolates the Variable That Matters",
+      "Configurable per-node delay reproduces the paper's own NS3-simulated “long-distance component” approach — letting us prove the proximity + prefetch effect on one laptop without real distributed infrastructure.",
+      "Zero-Cost Stack Keeps the Project Fully Reproducible",
+      "Every tool in the stack is free and open-source — the entire system can be rebuilt, graded, and re-run by anyone with a laptop, with no license, subscription, or cloud cost."
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 17,
+    "texts": [
+      "IEEE-Format Research Paper Status",
+      "Draft in progress, based on the reference paper's structure (Ma et al., ICUFN 2018). Abstract, Introduction, and Related Work sections drafted from Phases 1–2 implementation; Results section pending Phase 5 test data. Target: full IEEE-format draft submitted for guide's review after Phase 5 completion.",
+      "KSCST Proposal Status",
+      "Proposal outline prepared covering problem statement, objectives, and methodology (Slides 5–9). Budget section not applicable — project uses a zero-cost, fully open-source stack. Final proposal to be printed and submitted to project guide ahead of the KSCST deadline."
+    ],
+    "tables": [],
+    "pictures": []
+  },
+  {
+    "slide_num": 18,
+    "texts": [
+      "Conclusion & References",
+      "This project implements a process-level NFV/MEC simulation — origin server, orchestrator, and context-aware edge nodes — targeting the same latency and bandwidth-efficiency gains reported by Ma et al. (2018), built entirely on free, open-source, no-Docker tools. Future work: real containerized deployment, full fuzzy-logic prediction, and multi-device LAN testing.",
+      "10%",
+      "Latency ↓ (paper)",
+      "26% Faster",
+      "vs FDASH (paper)",
+      "3 Edge Nodes",
+      "Simulated MEC",
+      "$0 Cost",
+      "Fully OSS Stack",
+      "[1] Ma et al. — NFV-Based MEC for Lowering Latency of 4K Video Streaming, ICUFN, 2018",
+      "[2] Kua, Armitage & Branch — Survey of rate adaptation for DASH, IEEE Comm Surveys, 2017",
+      "[3] Zhao et al. — User QoE improvement for DASH (MPEG-DASH), ICNC, 2017",
+      "[4] Seufert et al. — Survey on QoE of HTTP adaptive streaming, IEEE Comm Surveys, 2015",
+      "[5] Eramo et al. — Service function chain routing & VNF migration, IEEE/ACM ToN, 2017",
+      "[6] Liang — Mobile Edge Computing, Cambridge University Press, 2017",
+      "[7] Hawilo et al. — NFV: state of the art, challenges, vEPC, IEEE Network, 2014",
+      "[8] Ma et al. — Fuzzy-based adaptive streaming, entropy rate reduction, Entropy, 2017",
+      "[9] Merkel — Docker: lightweight linux containers, Linux Journal, 2014",
+      "[10] Vergados et al. — FDASH: fuzzy-based MPEG/DASH adaptation, IEEE Sys. J., 2016",
+      "[11] Jiang, Yu, Song & Leung — Survey on MEC applied to video streaming, IEEE",
+      "[12] Mehrabi et al. — Device-enhanced MEC survey, IEEE Access, 2021",
+      "[13] Sukhmani et al. — Edge caching & computing in 5G for AR/VR, IEEE MultiMedia",
+      "[14] Toosi, Mahmud, Chi & Buyya — Orchestration of network slices in 5G/Fog/Edge",
+      "[15] Attaoui, Sabir & Elbiaze — VNF and container placement: advances & trends"
+    ],
+    "tables": [],
+    "pictures": []
+  }
+]

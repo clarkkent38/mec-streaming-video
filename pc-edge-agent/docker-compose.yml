@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  edge-agent:
+    build: .
+    image: mec-edge-agent:latest
+    container_name: mec-edge-agent
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5001}:${PORT:-5001}"
+    environment:
+      - PORT=${PORT:-5001}
+      - ORCHESTRATOR_URL=${ORCHESTRATOR_URL:-https://orchestrator-xfwd.onrender.com}
+      - ORIGIN_URL=${ORIGIN_URL:-https://origin-server-h42h.onrender.com}
+      - NODE_LABEL=${NODE_LABEL:-PC-Edge-Agent}
+      - DELAY_MS=${DELAY_MS:-5}
