@@ -7,18 +7,21 @@ import EdgeNodeLEDs from './EdgeNodeLEDs';
 import NetworkTopology from './NetworkTopology';
 import { useEdgeRouter } from './useEdgeRouter';
 import { usePlayerTelemetry } from './usePlayerTelemetry';
-import { ORIGIN_MANIFEST, IS_LAN_MODE } from './config';
+import { ORIGIN_MANIFEST, IS_LAN_MODE, VIDEO_CATALOG } from './config';
 
 export default function App() {
   const videoRef  = useRef(null);
   const playerRef = useRef(null);
 
-  const [isEdgeMode,   setIsEdgeMode]   = useState(false);
-  const [playerReady,  setPlayerReady]  = useState(false);
-  const [globalError,  setGlobalError]  = useState(null);
-  const [connError,    setConnError]    = useState(null);
-  const [qualityBadge, setQualityBadge] = useState(null);
+  const [isEdgeMode,      setIsEdgeMode]      = useState(false);
+  const [selectedStream,  setSelectedStream]  = useState(VIDEO_CATALOG[0].id);
+  const [playerReady,     setPlayerReady]     = useState(false);
+  const [globalError,     setGlobalError]     = useState(null);
+  const [connError,       setConnError]       = useState(null);
+  const [qualityBadge,    setQualityBadge]    = useState(null);
   const qualityTimerRef = useRef(null);
+
+  const currentStreamObj = VIDEO_CATALOG.find(v => v.id === selectedStream) || VIDEO_CATALOG[0];
 
   const { manifestUrl, activeNode, routeLog, resolveManifest, handleSegmentError } =
     useEdgeRouter(isEdgeMode);
@@ -93,15 +96,15 @@ export default function App() {
           initPlayer(newUrl);
         } else if (!newUrl) {
           setGlobalError('All edge nodes down. Falling back to origin.');
-          initPlayer(ORIGIN_MANIFEST);
+          initPlayer(currentStreamObj.path);
         }
       }
     });
-  }, [isEdgeMode, handleSegmentError]);
+  }, [isEdgeMode, handleSegmentError, currentStreamObj.path]);
 
   useEffect(() => {
     let cancelled = false;
-    resolveManifest().then(url => {
+    resolveManifest(currentStreamObj.path).then(url => {
       if (!cancelled && url) initPlayer(url);
     });
     return () => {
@@ -112,7 +115,7 @@ export default function App() {
         setPlayerReady(false);
       }
     };
-  }, [isEdgeMode, resolveManifest, initPlayer]);
+  }, [isEdgeMode, selectedStream, resolveManifest, initPlayer, currentStreamObj.path]);
 
   return (
     <div className="min-h-screen p-3 md:p-4 text-zinc-100 bg-zinc-950 font-sans selection:bg-blue-600 selection:text-white">
@@ -181,11 +184,14 @@ export default function App() {
               activeNode={activeNode}
               qualityBadge={qualityBadge}
               connError={connError}
-              onRetry={() => resolveManifest().then(url => url && initPlayer(url))}
+              onRetry={() => resolveManifest(currentStreamObj.path).then(url => url && initPlayer(url))}
               qualities={qualities}
               selectedQuality={selectedQuality}
               setSelectedQuality={setSelectedQuality}
               stats={stats}
+              selectedStream={selectedStream}
+              setSelectedStream={setSelectedStream}
+              videoCatalog={VIDEO_CATALOG}
             />
 
             {/* 2. Network Topology Flow Map */}

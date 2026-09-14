@@ -115,21 +115,38 @@ app.post('/restore', (_req, res) => {
 
 app.use('/dash', (req, res, next) => {
   if (AKAMAI_PROXY) {
-    const akamaiBaseUrl = 'https://dash.akamaized.net/akamai/bbb_30fps';
-    let targetPath = req.url;
-    if (targetPath === '/manifest.mpd') {
-      targetPath = '/bbb_30fps.mpd';
+    let targetBaseUrl = 'https://dash.akamaized.net/akamai/bbb_30fps';
+    let targetHost    = 'dash.akamaized.net';
+    let targetPath    = req.url;
+
+    if (req.url.startsWith('/envivio')) {
+      targetBaseUrl = 'https://dash.akamaized.net/envivio/EnvivioDash3';
+      targetHost    = 'dash.akamaized.net';
+      targetPath    = req.url.replace(/^\/envivio/, '') || '/manifest.mpd';
+    } else if (req.url.startsWith('/tos')) {
+      targetBaseUrl = 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel';
+      targetHost    = 'demo.unified-streaming.com';
+      targetPath    = req.url.replace(/^\/tos/, '') || '/tears-of-steel.ism/.mpd';
+      if (targetPath === '/manifest.mpd') {
+        targetPath = '/tears-of-steel.ism/.mpd';
+      }
+    } else {
+      // Default / BBB stream
+      if (targetPath === '/manifest.mpd' || targetPath === '/bbb/manifest.mpd') {
+        targetPath = '/bbb_30fps.mpd';
+      }
+      targetPath = targetPath.replace(/^\/bbb/, '');
     }
-    const targetUrl = akamaiBaseUrl + targetPath;
+
+    const targetUrl = targetBaseUrl + targetPath;
 
     const proxyReq = require('https').request(targetUrl, {
       method: req.method,
       headers: {
         ...req.headers,
-        host: 'dash.akamaized.net'
+        host: targetHost,
       }
     }, (proxyRes) => {
-      // Set CORS headers for the proxy response
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Headers', '*');
       res.writeHead(proxyRes.statusCode, proxyRes.headers);

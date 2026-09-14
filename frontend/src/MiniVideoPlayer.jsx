@@ -12,7 +12,10 @@ export default function MiniVideoPlayer({
   qualities = [],
   selectedQuality = -1,
   setSelectedQuality,
-  stats = {}
+  stats = {},
+  selectedStream,
+  setSelectedStream,
+  videoCatalog = []
 }) {
   return (
     <div className="card p-3 rounded-xl flex flex-col gap-2 border-zinc-800 bg-zinc-900/90 shadow-md">
@@ -32,6 +35,24 @@ export default function MiniVideoPlayer({
           {activeNode?.label || activeNode?.edgeId || activeNode?.id || (isEdgeMode ? 'MEC EDGE' : 'ORIGIN')}
         </span>
       </div>
+
+      {/* Video Source Selector Dropdown */}
+      {videoCatalog.length > 0 && (
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-950/70 border border-zinc-800/80">
+          <span className="text-[10px] font-mono text-zinc-400">🎬 Stream:</span>
+          <select
+            value={selectedStream}
+            onChange={(e) => setSelectedStream && setSelectedStream(e.target.value)}
+            className="w-full bg-transparent text-zinc-200 text-[11px] font-medium outline-none cursor-pointer"
+          >
+            {videoCatalog.map((v) => (
+              <option key={v.id} value={v.id} className="bg-zinc-900 text-zinc-200">
+                {v.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Small Video Container */}
       {connError ? (

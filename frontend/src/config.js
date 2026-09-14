@@ -28,13 +28,42 @@ export const ORIGIN_MANIFEST = import.meta.env.VITE_ORIGIN_MANIFEST ||
 
 export const IS_LAN_MODE = import.meta.env.VITE_LAN === 'true';
 
+// Available multi-bitrate video streams
+export const VIDEO_CATALOG = [
+  {
+    id: 'bbb',
+    title: '🐰 Big Buck Bunny (Animation · 5 Bitrates: 240p to 1080p)',
+    path: '/dash/manifest.mpd',
+    badge: 'Standard ABR Benchmark'
+  },
+  {
+    id: 'envivio',
+    title: '⚡ Envivio Action Showcase (High Dynamics · 6 Bitrates)',
+    path: '/dash/envivio/manifest.mpd',
+    badge: 'HDR Multi-rate'
+  },
+  {
+    id: 'tos',
+    title: '🚀 Tears of Steel (Sci-Fi · 4K / HD Ladder)',
+    path: '/dash/tos/manifest.mpd',
+    badge: 'Cinematic Film'
+  }
+];
+
 /**
  * Helper to construct manifest URL for any dynamic edge node
- * @param {string} edgeBaseUrl - The full base URL of the edge (e.g. http://192.168.1.5:5001)
+ * @param {string} edgeBaseUrl - Base URL of edge (e.g. https://... or http://192.168.1.5:5001)
+ * @param {string} streamPath - Path to manifest (e.g. /dash/manifest.mpd or /dash/envivio/manifest.mpd)
  * @returns {string} The full DASH manifest URL
  */
-export const getEdgeManifestUrl = (edgeBaseUrl) => {
-  if (!edgeBaseUrl) return ORIGIN_MANIFEST;
+export const getEdgeManifestUrl = (edgeBaseUrl, streamPath = '/dash/manifest.mpd') => {
+  if (!edgeBaseUrl) return `${ORIGIN_URL}${streamPath}`;
   const cleanBase = edgeBaseUrl.replace(/\/$/, '');
-  return `${cleanBase}/dash/manifest.mpd`;
+  const cleanPath = streamPath.startsWith('/') ? streamPath : `/${streamPath}`;
+  return `${cleanBase}${cleanPath}`;
+};
+
+export const getOriginManifestUrl = (streamPath = '/dash/manifest.mpd') => {
+  const cleanPath = streamPath.startsWith('/') ? streamPath : `/${streamPath}`;
+  return `${ORIGIN_URL}${cleanPath}`;
 };

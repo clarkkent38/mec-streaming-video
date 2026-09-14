@@ -41,19 +41,20 @@ export function useEdgeRouter(isEdgeMode) {
   }, []);
 
   // ── resolveManifest ────────────────────────────────────────────────────────
-  const resolveManifest = useCallback(async () => {
+  const resolveManifest = useCallback(async (streamPath = '/dash/manifest.mpd') => {
+    const originUrl = getEdgeManifestUrl(null, streamPath);
     if (!isEdgeMode) {
-      appendLog('info', 'Direct Mode — Streaming directly from Origin Cloud');
+      appendLog('info', `Direct Mode — Streaming from Origin Cloud (${streamPath})`);
       setActiveNodeBoth({
         id: 'origin',
         edgeId: 'origin',
         label: 'Origin Server (Cloud)',
-        url: ORIGIN_MANIFEST,
+        url: originUrl,
         measuredLatencyMs: 150,
         delay_ms: 150,
       });
-      setManifestUrl(ORIGIN_MANIFEST);
-      return ORIGIN_MANIFEST;
+      setManifestUrl(originUrl);
+      return originUrl;
     }
 
     appendLog('info', 'Edge Mode — Querying VNFM Orchestrator for best edge…');
@@ -73,17 +74,17 @@ export function useEdgeRouter(isEdgeMode) {
           id: 'origin',
           edgeId: 'origin',
           label: 'Origin Server (Cloud Fallback)',
-          url: ORIGIN_MANIFEST,
+          url: originUrl,
           measuredLatencyMs: 150,
           delay_ms: 150,
           isFallback: true,
         });
-        setManifestUrl(ORIGIN_MANIFEST);
-        return ORIGIN_MANIFEST;
+        setManifestUrl(originUrl);
+        return originUrl;
       }
 
       const node = data.best_edge || data.best_node;
-      const url  = getEdgeManifestUrl(node.url);
+      const url  = getEdgeManifestUrl(node.url, streamPath);
       const latencyDisplay = node.measuredLatencyMs != null ? `${node.measuredLatencyMs}ms` : `${node.delay_ms || 5}ms`;
 
       appendLog('success', `✓ Routed to ${node.label || node.edgeId || node.id} (RTT: ${latencyDisplay}) | Score: ${node.score || 'N/A'}`);
@@ -97,13 +98,13 @@ export function useEdgeRouter(isEdgeMode) {
         id: 'origin',
         edgeId: 'origin',
         label: 'Origin Server (Cloud Fallback)',
-        url: ORIGIN_MANIFEST,
+        url: originUrl,
         measuredLatencyMs: 150,
         delay_ms: 150,
         isFallback: true,
       });
-      setManifestUrl(ORIGIN_MANIFEST);
-      return ORIGIN_MANIFEST;
+      setManifestUrl(originUrl);
+      return originUrl;
     }
   }, [isEdgeMode, appendLog, setActiveNodeBoth]);
 
