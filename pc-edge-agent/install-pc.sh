@@ -34,8 +34,8 @@ fi
 echo -e "\n${BLUE}==> Configuring Edge Agent settings...${NC}"
 
 if [ -z "$ORCHESTRATOR_URL" ]; then
-  read -r -p "Enter Orchestrator URL [default: https://orchestrator-xfwd.onrender.com]: " input_orch
-  ORCHESTRATOR_URL=${input_orch:-https://orchestrator-xfwd.onrender.com}
+  read -r -p "Enter Orchestrator URL [default: https://mec-orchestrator.onrender.com]: " input_orch
+  ORCHESTRATOR_URL=${input_orch:-https://mec-orchestrator.onrender.com}
 fi
 
 if [ -z "$NODE_LABEL" ]; then
@@ -45,8 +45,8 @@ if [ -z "$NODE_LABEL" ]; then
 fi
 
 if [ -z "$ORIGIN_URL" ]; then
-  read -r -p "Enter Origin Server URL [default: https://origin-server-h42h.onrender.com]: " input_origin
-  ORIGIN_URL=${input_origin:-https://origin-server-h42h.onrender.com}
+  read -r -p "Enter Origin Server URL [default: https://mec-origin-server.onrender.com]: " input_origin
+  ORIGIN_URL=${input_origin:-https://mec-origin-server.onrender.com}
 fi
 
 if [ -z "$PORT" ]; then

@@ -18,9 +18,9 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: Prompt for configuration (with defaults)
-set /p ORCH_INPUT="Enter Orchestrator URL [default: https://orchestrator-xfwd.onrender.com]: "
+set /p ORCH_INPUT="Enter Orchestrator URL [default: https://mec-orchestrator.onrender.com]: "
 if "%ORCH_INPUT%"=="" (
-    set "ORCHESTRATOR_URL=https://orchestrator-xfwd.onrender.com"
+    set "ORCHESTRATOR_URL=https://mec-orchestrator.onrender.com"
 ) else (
     set "ORCHESTRATOR_URL=%ORCH_INPUT%"
 )
