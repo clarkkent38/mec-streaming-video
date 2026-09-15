@@ -56,7 +56,7 @@ export default function App() {
     } catch (err) {
       const msg = isEdgeMode
         ? `Edge node / orchestrator unreachable: ${err.message}`
-        : `Origin server not reachable on :3000 — start it first.`;
+        : `Origin server error (${err.message}). Check connection or stream URL.`;
       setConnError(msg);
       return;
     }

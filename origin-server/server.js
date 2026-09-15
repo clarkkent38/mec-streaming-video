@@ -132,10 +132,17 @@ app.use('/dash', (req, res, next) => {
       }
     } else {
       // Default / BBB stream
-      if (targetPath === '/manifest.mpd' || targetPath === '/bbb/manifest.mpd') {
+      targetBaseUrl = 'https://dash.akamaized.net/akamai/bbb_30fps';
+      targetHost    = 'dash.akamaized.net';
+      targetPath    = req.url;
+      if (targetPath.startsWith('/bbb/')) {
+        targetPath = targetPath.slice(4);
+      } else if (targetPath === '/bbb') {
         targetPath = '/bbb_30fps.mpd';
       }
-      targetPath = targetPath.replace(/^\/bbb/, '');
+      if (targetPath === '/manifest.mpd') {
+        targetPath = '/bbb_30fps.mpd';
+      }
     }
 
     const targetUrl = targetBaseUrl + targetPath;

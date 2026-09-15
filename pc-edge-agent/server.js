@@ -350,8 +350,19 @@ async function handleProxyMedia(req, res, subPath) {
 
   let targetUrl;
   if (AKAMAI_PROXY) {
-    const akamaiPath = subPath === '/manifest.mpd' ? '/bbb_30fps.mpd' : subPath;
-    targetUrl = `https://dash.akamaized.net/akamai/bbb_30fps${akamaiPath}`;
+    if (subPath.startsWith('/envivio')) {
+      targetUrl = `https://dash.akamaized.net/envivio/EnvivioDash3${subPath.replace(/^\/envivio/, '') || '/manifest.mpd'}`;
+    } else if (subPath.startsWith('/tos')) {
+      let p = subPath.replace(/^\/tos/, '') || '/tears-of-steel.ism/.mpd';
+      if (p === '/manifest.mpd') p = '/tears-of-steel.ism/.mpd';
+      targetUrl = `https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel${p}`;
+    } else {
+      let p = subPath;
+      if (p.startsWith('/bbb/')) p = p.slice(4);
+      else if (p === '/bbb') p = '/bbb_30fps.mpd';
+      if (p === '/manifest.mpd') p = '/bbb_30fps.mpd';
+      targetUrl = `https://dash.akamaized.net/akamai/bbb_30fps${p}`;
+    }
   } else {
     targetUrl = `${ORIGIN_URL}/dash${subPath}`;
   }
