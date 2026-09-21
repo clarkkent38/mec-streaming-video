@@ -1,31 +1,29 @@
-﻿/**
+/**
  * src/config.js
  *
  * Exposes core environment variables and endpoints for the frontend.
  * Edge node URLs are discovered dynamically at runtime via the orchestrator.
+ * 
+ * When deployed on Render via render.yaml, all VITE_* env vars are
+ * automatically injected. Localhost fallbacks are used for local dev.
  */
 
-// Detect if running in cloud (Vercel, Render, custom domain) vs local machine
+// Detect if running in cloud (Render, Vercel, custom domain) vs local machine
 const isCloudDeploy = typeof window !== 'undefined' && 
   window.location.hostname !== 'localhost' && 
   window.location.hostname !== '127.0.0.1';
 
-// Production defaults (Railway Orchestrator + jsDelivr Origin)
-export const RAILWAY_ORCHESTRATOR = 'https://orchestrator-production-8769.up.railway.app';
-// The GitHub folder holding the static DASH files
-export const JSDELIVR_ORIGIN = 'https://cdn.jsdelivr.net/gh/clarkkent38/mec-streaming-video@main/origin-server/dash-output';
-
-// Central Orchestrator URL (VNFM Controller)
+// Central Orchestrator URL (VNFM Controller) — injected by Render via render.yaml
 export const ORCHESTRATOR_URL = import.meta.env.VITE_ORCHESTRATOR_URL || 
-  (isCloudDeploy ? RAILWAY_ORCHESTRATOR : 'http://localhost:5000');
+  (isCloudDeploy ? '' : 'http://localhost:5000');
 
-// Central Origin Server URL (Cloud DASH Media)
+// Central Origin Server URL (Cloud DASH Media) — injected by Render via render.yaml
 export const ORIGIN_URL = import.meta.env.VITE_ORIGIN_URL || 
-  (isCloudDeploy ? JSDELIVR_ORIGIN : 'http://localhost:3000');
+  (isCloudDeploy ? '' : 'http://localhost:3000');
 
 // Direct Origin Manifest URL (Baseline fallback)
 export const ORIGIN_MANIFEST = import.meta.env.VITE_ORIGIN_MANIFEST || 
-  `${ORIGIN_URL}/manifest.mpd`;
+  `${ORIGIN_URL}/dash/manifest.mpd`;
 
 export const IS_LAN_MODE = import.meta.env.VITE_LAN === 'true';
 
@@ -65,12 +63,7 @@ export const getEdgeManifestUrl = (edgeBaseUrl, streamPath = '/dash/manifest.mpd
 };
 
 export const getOriginManifestUrl = (streamPath = '/dash/manifest.mpd') => {
-  // If we are using jsDelivr (GitHub), it doesn't have the Express /dash/ prefix
-  if (ORIGIN_URL.includes('jsdelivr.net')) {
-    const cleanPath = streamPath.replace('/dash', '') || '/manifest.mpd';
-    return `${ORIGIN_URL}${cleanPath}`;
-  }
-  
+  // Origin is on Render — it has the Express /dash/ route prefix
   const cleanPath = streamPath.startsWith('/') ? streamPath : `/${streamPath}`;
   return `${ORIGIN_URL}${cleanPath}`;
 };
