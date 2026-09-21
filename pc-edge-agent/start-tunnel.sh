@@ -17,8 +17,8 @@ NC='\033[0m'
 
 PORT="${PORT:-5001}"
 NODE_LABEL="${NODE_LABEL:-PC-Edge-Funnel}"
-ORCHESTRATOR_URL="${ORCHESTRATOR_URL:-https://orchestrator-xfwd.onrender.com}"
-ORIGIN_URL="${ORIGIN_URL:-https://origin-server-h42h.onrender.com}"
+ORCHESTRATOR_URL="${ORCHESTRATOR_URL:-https://orchestrator-id88.onrender.com}"
+ORIGIN_URL="${ORIGIN_URL:-https://origin-server-1ge5.onrender.com}"
 
 echo -e "\n${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║    MEC Edge Agent — Tailscale Funnel Launcher (Mode B)       ║${NC}"

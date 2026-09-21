@@ -44,7 +44,7 @@ npm install --omit=dev
 echo -e "\n==> [3/3] Configuring Android Edge Node..."
 
 # Prompt for Orchestrator URL
-DEFAULT_ORCH="https://orchestrator-xfwd.onrender.com"
+DEFAULT_ORCH="https://orchestrator-id88.onrender.com"
 read -r -p "Enter Orchestrator URL [default: $DEFAULT_ORCH]: " input_orch
 ORCHESTRATOR_URL=${input_orch:-$DEFAULT_ORCH}
 
@@ -72,6 +72,6 @@ echo -e "========================================================\n"
 PORT=5001 \
 NODE_LABEL="$NODE_LABEL" \
 ORCHESTRATOR_URL="$ORCHESTRATOR_URL" \
-ORIGIN_URL="https://origin-server-h42h.onrender.com" \
+ORIGIN_URL="https://origin-server-1ge5.onrender.com" \
 TAILSCALE_FUNNEL_URL="$TAILSCALE_FUNNEL_URL" \
 node server.js
