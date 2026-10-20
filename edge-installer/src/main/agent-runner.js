@@ -1,151 +1,216 @@
 'use strict';
 /**
  * agent-runner.js
- * Forks pc-edge-agent/server.js as a child process with the correct env vars
- * built from config-store. The agent process is completely separate from the
- * Electron main process — it is the same server.js that the terminal scripts run.
  *
- * The agent port (5001) is bound to 0.0.0.0 (reachable via Funnel / LAN).
- * The dashboard port (5002) is bound to 127.0.0.1 (local only, never tunnelled).
+ * Spawns pc-edge-agent/server.js using the system Node.js on PATH.
+ * Works in both dev (repo layout) and packaged (extraResources) contexts.
  *
- * Auto-restart: if the child exits unexpectedly (non-zero code, not a deliberate
- * stop()), it is restarted with exponential back-off up to 30 s.
+ * Key design decisions:
+ *  - Uses spawn() not fork() — fork() requires matching Node version between
+ *    Electron's embedded Node and the child, which fails in packaged apps.
+ *  - pc-edge-agent/node_modules is bundled in extraResources (package.json
+ *    no longer excludes node_modules from the copy).
+ *  - If node_modules is still missing (edge case), runs npm install first.
+ *  - Auto-restart on unexpected exit with exponential back-off (max 30 s).
+ *  - stop() sends SIGTERM then SIGKILL after 5 s.
  */
 
-const { fork }      = require('child_process');
-const path          = require('path');
-const { app }       = require('electron');
-const configStore   = require('./config-store');
-const log           = require('./logger');
+const { spawn, execFileSync } = require('child_process');
+const path                    = require('path');
+const fs                      = require('fs');
+const configStore             = require('./config-store');
+const log                     = require('./logger');
 
-// Resolve pc-edge-agent/server.js from packaged extraResources or dev layout
-function resolveAgentPath() {
+// ── Path resolution ───────────────────────────────────────────────────────────
+
+function resolveAgentDir() {
   const candidates = [
-    path.join(process.resourcesPath || '', 'pc-edge-agent', 'server.js'),
-    path.join(__dirname, '..', '..', '..', 'pc-edge-agent', 'server.js'),
+    // Packaged app: Electron puts extraResources next to resources/app.asar
+    path.join(process.resourcesPath || '', 'pc-edge-agent'),
+    // Dev: repo layout — edge-installer is a sibling of pc-edge-agent
+    path.join(__dirname, '..', '..', '..', 'pc-edge-agent'),
+    // Fallback: two levels up from src/main/
+    path.join(__dirname, '..', '..', 'pc-edge-agent'),
   ];
   for (const p of candidates) {
-    try {
-      require('fs').accessSync(p);
-      return p;
-    } catch (_) {}
+    if (fs.existsSync(path.join(p, 'server.js'))) return p;
   }
   throw new Error(
-    'Cannot locate pc-edge-agent/server.js.\n' +
-    'Looked in:\n' + candidates.join('\n')
+    'Cannot find pc-edge-agent/server.js.\nLooked in:\n' +
+    candidates.join('\n') +
+    '\n\nFix: reinstall EdgeNest. If running from source, make sure ' +
+    'pc-edge-agent/ is at the repo root.'
   );
 }
 
-// Build the process env for the agent child process
+/**
+ * Resolve a usable `node` binary.
+ * Priority: system node on PATH → node.exe next to Electron exe.
+ */
+function resolveNodeBin() {
+  // 1. System node (covers both dev and most packaged installs)
+  try {
+    const out = execFileSync('node', ['--version'],
+      { timeout: 3000, windowsHide: true, stdio: 'pipe' });
+    if (out.toString().trim().startsWith('v')) return 'node';
+  } catch (_) {}
+
+  // 2. node.exe bundled next to the Electron executable
+  const nodeNext = path.join(path.dirname(process.execPath), 'node.exe');
+  if (fs.existsSync(nodeNext)) return nodeNext;
+
+  // 3. Last resort: run Electron itself as Node
+  //    (set ELECTRON_RUN_AS_NODE=1 in env to enable this mode)
+  return process.execPath;
+}
+
+/**
+ * Install pc-edge-agent deps if node_modules is missing.
+ * This should never happen in a correctly built package (node_modules is
+ * bundled in extraResources), but it's a safe fallback.
+ */
+function ensureAgentDeps(agentDir) {
+  const nmDir = path.join(agentDir, 'node_modules');
+  if (fs.existsSync(path.join(nmDir, 'express'))) return; // already installed
+
+  log.info('[agent-runner] node_modules missing — running npm install in', agentDir);
+  try {
+    execFileSync('npm', ['install', '--omit=dev', '--no-fund', '--no-audit'],
+      { cwd: agentDir, timeout: 120000, windowsHide: true, stdio: 'pipe' });
+    log.info('[agent-runner] npm install completed.');
+  } catch (err) {
+    throw new Error(
+      `Failed to install agent dependencies: ${err.message}\n` +
+      `Manual fix: open a terminal, cd "${agentDir}", run: npm install`
+    );
+  }
+}
+
+// ── Environment builder ───────────────────────────────────────────────────────
+
 function buildEnv(cfg, publicUrl) {
   return {
-    ...process.env,                           // inherit PATH etc.
-    PORT:               String(cfg.agentPort        || 5001),
-    DASHBOARD_PORT:     String(cfg.dashboardPort    || 5002),
-    BIND_HOST:          '0.0.0.0',            // agent is publicly reachable (Funnel or LAN)
-    NODE_LABEL:         cfg.nodeLabel          || 'EdgeNest',
-    ORCHESTRATOR_URL:   cfg.orchestratorUrl    || '',
-    ORIGIN_URL:         cfg.originUrl          || '',
-    DELAY_MS:           String(cfg.delayMs     ?? 0),
-    AKAMAI_PROXY:       'true',
-    DASHBOARD_ENABLED:  'true',
-    // TAILSCALE_FUNNEL_URL is set when publicUrl is known (Mode B)
+    ...process.env,                               // inherit PATH, USERPROFILE, etc.
+    PORT:                String(cfg.agentPort     || 5001),
+    DASHBOARD_PORT:      String(cfg.dashboardPort || 5002),
+    BIND_HOST:           '0.0.0.0',               // reachable via Funnel / LAN
+    NODE_LABEL:          cfg.nodeLabel             || 'EdgeNest',
+    ORCHESTRATOR_URL:    cfg.orchestratorUrl        || '',
+    ORIGIN_URL:          cfg.originUrl              || '',
+    DELAY_MS:            String(cfg.delayMs         ?? 0),
+    AKAMAI_PROXY:        'true',
+    DASHBOARD_ENABLED:   'true',
+    ELECTRON_RUN_AS_NODE: '1',                    // needed if we fall back to execPath
     ...(publicUrl ? { TAILSCALE_FUNNEL_URL: publicUrl } : {}),
-    // Suppress Electron's own NODE_APP_INSTANCE leaking into the child
-    ELECTRON_RUN_AS_NODE: '1',
   };
 }
 
-// ── State ────────────────────────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
 
-let _child         = null;
-let _stopping      = false;
-let _backoffMs     = 2000;
-let _restartTimer  = null;
-let _publicUrl     = null;   // set externally by Tailscale assistant
+let _child        = null;
+let _stopping     = false;
+let _backoffMs    = 2000;
+let _restartTimer = null;
+let _publicUrl    = null;
 
-const listeners = new Set();
+const _listeners  = new Set();
 
 function emit(event, data) {
-  const { ipcMain } = require('electron');
-  // Broadcast to all renderer windows
+  // Push to all open renderer windows
   try {
     const { BrowserWindow } = require('electron');
     BrowserWindow.getAllWindows().forEach(w => {
       if (!w.isDestroyed()) w.webContents.send('agent:event', { event, data });
     });
   } catch (_) {}
-  listeners.forEach(fn => { try { fn(event, data); } catch (_) {} });
+  _listeners.forEach(fn => { try { fn(event, data); } catch (_) {} });
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────────
 
 function setPublicUrl(url) {
   _publicUrl = url;
-  // If agent is already running, restart it so it registers with the new URL
+  // If the agent is already running, restart it so it re-registers with the
+  // new public URL as TAILSCALE_FUNNEL_URL.
   if (_child) {
-    log.info('[agent-runner] Public URL set — restarting agent to re-register:', url);
-    _stopping = false;
+    log.info('[agent-runner] Public URL changed — restarting to re-register:', url);
+    _stopping = false;   // allow auto-restart after the kill
     _child.kill('SIGTERM');
-    // The exit handler will restart it
   }
 }
 
 async function start() {
   if (_child) {
-    log.warn('[agent-runner] start() called but agent is already running (pid:', _child.pid, ')');
+    log.warn('[agent-runner] Already running (pid:', _child.pid, ')');
     return;
   }
-
   _stopping = false;
 
-  let agentPath;
+  // 1. Locate agent
+  let agentDir;
   try {
-    agentPath = resolveAgentPath();
+    agentDir = resolveAgentDir();
   } catch (err) {
-    log.error('[agent-runner] Cannot start:', err.message);
-    emit('error', { message: err.message, fix: 'Reinstall EdgeNest — the bundled agent files may be missing.' });
+    log.error('[agent-runner] Cannot locate agent:', err.message);
+    emit('error', {
+      message: err.message,
+      fix: 'Reinstall EdgeNest. The bundled agent files appear to be missing.',
+    });
     throw err;
   }
 
-  const cfg = configStore.load();
-  const env = buildEnv(cfg, _publicUrl);
+  // 2. Find Node binary
+  const nodeBin = resolveNodeBin();
+  log.info('[agent-runner] Node binary:', nodeBin);
 
-  log.info('[agent-runner] Starting agent:', agentPath);
-  log.info('[agent-runner] PORT=' + env.PORT + ' BIND_HOST=' + env.BIND_HOST +
-           ' ORCHESTRATOR=' + env.ORCHESTRATOR_URL + ' LABEL=' + env.NODE_LABEL);
+  // 3. Install deps if missing
+  try {
+    ensureAgentDeps(agentDir);
+  } catch (err) {
+    log.error('[agent-runner] Dep install failed:', err.message);
+    emit('error', { message: err.message, fix: err.message });
+    throw err;
+  }
 
-  _child = fork(agentPath, [], {
+  // 4. Build env and spawn
+  const cfg        = configStore.load();
+  const env        = buildEnv(cfg, _publicUrl);
+  const serverPath = path.join(agentDir, 'server.js');
+
+  log.info('[agent-runner] Spawning:', nodeBin, serverPath);
+  log.info(`[agent-runner] PORT=${env.PORT} ORCH=${env.ORCHESTRATOR_URL} LABEL=${env.NODE_LABEL}`);
+
+  _child = spawn(nodeBin, [serverPath], {
     env,
-    silent: true,          // capture stdout/stderr
+    cwd:      agentDir,      // server.js does __dirname-relative lookups (config.yaml etc.)
     detached: false,
+    stdio:    ['ignore', 'pipe', 'pipe'],
   });
 
   _child.stdout.on('data', chunk => {
-    String(chunk).split('\n').filter(Boolean).forEach(line => {
-      log.info('[agent]', line);
-    });
+    String(chunk).split('\n').filter(Boolean).forEach(l => log.info('[agent]', l));
   });
-
   _child.stderr.on('data', chunk => {
-    String(chunk).split('\n').filter(Boolean).forEach(line => {
-      log.error('[agent:stderr]', line);
-    });
+    String(chunk).split('\n').filter(Boolean).forEach(l => log.error('[agent:err]', l));
   });
 
-  _child.on('error', (err) => {
-    log.error('[agent-runner] Child process error:', err.message);
-    emit('error', { message: err.message, fix: 'Check that Node.js is available and the agent files are intact.' });
+  _child.on('error', err => {
+    log.error('[agent-runner] Spawn error:', err.message);
+    emit('error', {
+      message: err.message,
+      fix: nodeBin === process.execPath
+        ? 'Node.js was not found on PATH. Install Node.js LTS from https://nodejs.org and restart EdgeNest.'
+        : `Unexpected spawn error: ${err.message}`,
+    });
   });
 
   _child.on('exit', (code, signal) => {
-    log.info(`[agent-runner] Agent exited (code=${code} signal=${signal})`);
+    log.info(`[agent-runner] Agent exited — code=${code} signal=${signal}`);
     _child = null;
     emit('stopped', { code, signal });
 
-    if (!_stopping && code !== 0) {
-      // Unexpected exit — schedule restart with back-off
-      log.warn(`[agent-runner] Unexpected exit — restarting in ${_backoffMs} ms`);
+    if (!_stopping) {
+      log.warn(`[agent-runner] Unexpected exit — retrying in ${_backoffMs} ms`);
       emit('restarting', { inMs: _backoffMs });
       _restartTimer = setTimeout(() => {
         _restartTimer = null;
@@ -163,30 +228,21 @@ async function start() {
 
 async function stop() {
   _stopping = true;
+  if (_restartTimer) { clearTimeout(_restartTimer); _restartTimer = null; }
+  if (!_child) { log.info('[agent-runner] stop() — nothing running.'); return; }
 
-  if (_restartTimer) {
-    clearTimeout(_restartTimer);
-    _restartTimer = null;
-  }
-
-  if (!_child) {
-    log.info('[agent-runner] stop() called but no agent running.');
-    return;
-  }
-
-  log.info('[agent-runner] Stopping agent pid:', _child.pid);
-
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
+  log.info('[agent-runner] Stopping pid:', _child.pid);
+  return new Promise(resolve => {
+    const killTimer = setTimeout(() => {
       if (_child) {
-        log.warn('[agent-runner] Agent did not exit in 5 s — sending SIGKILL');
+        log.warn('[agent-runner] Timeout — sending SIGKILL');
         _child.kill('SIGKILL');
       }
       resolve();
     }, 5000);
 
     _child.once('exit', () => {
-      clearTimeout(timeout);
+      clearTimeout(killTimer);
       resolve();
     });
 
@@ -203,8 +259,8 @@ function getStatus() {
 }
 
 function onEvent(fn) {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
+  _listeners.add(fn);
+  return () => _listeners.delete(fn);
 }
 
 module.exports = { start, stop, getStatus, setPublicUrl, onEvent };

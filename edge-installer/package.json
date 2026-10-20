@@ -42,8 +42,9 @@
         "to": "pc-edge-agent",
         "filter": [
           "**/*",
-          "!node_modules/**",
-          "!exports/**"
+          "!exports/**",
+          "!*.zip",
+          "!*.log"
         ]
       },
       {
