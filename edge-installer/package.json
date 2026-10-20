@@ -1,0 +1,97 @@
+{
+  "name": "edgenest",
+  "version": "1.0.0",
+  "description": "EdgeNest — MEC Edge Node desktop app for Windows",
+  "main": "src/main/app.js",
+  "scripts": {
+    "start": "electron .",
+    "prebuild": "node scripts/download-vendor.js",
+    "prestart": "node scripts/download-vendor.js",
+    "build": "electron-builder --win --x64",
+    "build:dir": "electron-builder --win --x64 --dir",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest --runInBand"
+  },
+  "keywords": [
+    "mec",
+    "edge",
+    "streaming",
+    "vnf",
+    "electron"
+  ],
+  "author": "EdgeNest",
+  "license": "MIT",
+  "dependencies": {
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "electron": "30.0.2",
+    "electron-builder": "24.13.3",
+    "jest": "^29.7.0"
+  },
+  "build": {
+    "appId": "com.edgenest.app",
+    "productName": "EdgeNest",
+    "copyright": "Copyright © 2026 EdgeNest",
+    "directories": {
+      "output": "dist-installer",
+      "buildResources": "assets"
+    },
+    "extraResources": [
+      {
+        "from": "../pc-edge-agent",
+        "to": "pc-edge-agent",
+        "filter": [
+          "**/*",
+          "!node_modules/**",
+          "!exports/**"
+        ]
+      },
+      {
+        "from": "defaults.json",
+        "to": "defaults.json"
+      }
+    ],
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "defaults.json",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icons/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EdgeNest",
+      "deleteAppDataOnUninstall": false,
+      "include": "assets/installer.nsh"
+    },
+    "protocols": [
+      {
+        "name": "EdgeNest",
+        "schemes": [
+          "edgenest"
+        ]
+      }
+    ]
+  },
+  "jest": {
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "testEnvironment": "node"
+  }
+}

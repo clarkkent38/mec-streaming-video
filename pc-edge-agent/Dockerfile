@@ -14,8 +14,8 @@ COPY . .
 ENV PORT=5001
 ENV NODE_ENV=production
 ENV BIND_HOST=0.0.0.0
-ENV ORCHESTRATOR_URL=https://orchestrator-xfwd.onrender.com
-ENV ORIGIN_URL=https://origin-server-h42h.onrender.com
+ENV ORCHESTRATOR_URL=https://orchestrator-id88.onrender.com
+ENV ORIGIN_URL=https://origin-server-1ge5.onrender.com
 ENV NODE_LABEL=MEC-Edge-Agent
 ENV DELAY_MS=5
 

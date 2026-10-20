@@ -4,7 +4,7 @@ This standalone package (`pc-edge-agent/`) turns **any computer** (Windows, Mac,
 
 Once started, the agent:
 1. Determines its reachable address (**Mode A: Local LAN** or **Mode B: Public Tailscale Funnel**).
-2. Self-registers with the central **VNFM Orchestrator** (`https://orchestrator-xfwd.onrender.com` or local).
+2. Self-registers with the central **VNFM Orchestrator** (`https://orchestrator-id88.onrender.com` or local).
 3. Sends 5-second telemetry heartbeats (cache hit ratio, requests served).
 4. Serves cached 4K/1080p DASH media chunks with ultra-low sub-10ms response times.
 
@@ -25,7 +25,7 @@ Once started, the agent:
 
 ### On Windows (Double-Click):
 1. Double-click **`start-edge.bat`**.
-2. Press **Enter** to accept default orchestrator (`https://orchestrator-xfwd.onrender.com`).
+2. Press **Enter** to accept default orchestrator (`https://orchestrator-id88.onrender.com`).
 3. Enter a label (e.g. `Dell-LivingRoom`) and press **Enter**.
 
 ### On Mac / Linux / WSL:
@@ -37,7 +37,7 @@ chmod +x install-pc.sh
 ### With Docker:
 ```bash
 docker build -t mec-edge-agent .
-docker run -d --name mec-edge-agent -p 5001:5001 -e ORCHESTRATOR_URL="https://orchestrator-xfwd.onrender.com" -e NODE_LABEL="My-PC-Edge" mec-edge-agent
+docker run -d --name mec-edge-agent -p 5001:5001 -e ORCHESTRATOR_URL="https://orchestrator-id88.onrender.com" -e NODE_LABEL="My-PC-Edge" mec-edge-agent
 ```
 
 ---
@@ -114,7 +114,7 @@ Turn any Android smartphone into an active MEC edge node!
    ```
 
 2. **Live Cloud Orchestrator Registry:**
-   Visit: `https://orchestrator-xfwd.onrender.com/api/orchestrator/edges`  
+   Visit: `https://orchestrator-id88.onrender.com/api/orchestrator/edges`  
    Your PC/phone will appear dynamically in the live edge array!
 
 3. **Live Streaming Dashboard:**

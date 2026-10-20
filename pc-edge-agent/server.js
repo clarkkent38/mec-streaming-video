@@ -10,6 +10,16 @@
  *  4. In-memory LRU caching reverse-proxy for DASH & video media segments
  *  5. Gracefully handles network/orchestrator disconnections with retry backoff
  *  6. Supports runtime fault injection (delays, simulated outages, metrics)
+ *
+ * Additive additions (backward-compatible):
+ *  7. BIND_HOST env var (defaults to 0.0.0.0 — unchanged behaviour)
+ *  8. Per-request telemetry middleware: records timestamp, path, HIT/MISS, status,
+ *     total time ms, bytes, origin fetch time ms. Bounded in-memory store:
+ *     1-second buckets for 60 min, 1-minute buckets for 24 h, last 5,000 raw requests.
+ *     Appends raw requests to a daily CSV in EXPORT_DIR (default ./exports/).
+ *  9. Local-only dashboard API on 127.0.0.1:DASHBOARD_PORT (default 5002).
+ *     Endpoints: GET /api/stats, /api/series?window=, /api/requests,
+ *                /api/export.csv, GET /api/stream (SSE for live updates).
  */
 
 'use strict';
@@ -56,6 +66,13 @@ const ORIGIN_URL       = (process.env.ORIGIN_URL || yamlConfig.ORIGIN_URL || 'ht
 const TAILSCALE_FUNNEL_URL = process.env.TAILSCALE_FUNNEL_URL || yamlConfig.TAILSCALE_FUNNEL_URL || null;
 const PUBLIC_URL           = TAILSCALE_FUNNEL_URL || process.env.PUBLIC_URL || process.env.TUNNEL_URL || yamlConfig.PUBLIC_URL || yamlConfig.TUNNEL_URL || null;
 const AKAMAI_PROXY         = process.env.AKAMAI_PROXY !== 'false';
+
+// Additive: dashboard API port (never exposed through Funnel — bound to 127.0.0.1 only)
+const DASHBOARD_PORT   = parseInt(process.env.DASHBOARD_PORT || yamlConfig.DASHBOARD_PORT || '5002', 10);
+const DASHBOARD_ENABLED = process.env.DASHBOARD_ENABLED !== 'false'; // opt-out flag
+
+// Additive: CSV export directory
+const EXPORT_DIR = process.env.EXPORT_DIR || yamlConfig.EXPORT_DIR || path.join(__dirname, 'exports');
 
 // Generate unique edgeId: label + short random suffix
 const randomSuffix = Math.random().toString(36).substring(2, 6);
@@ -323,12 +340,164 @@ app.get('/edge-stats', (_req, res) => {
   });
 });
 
+// ─── ADDITIVE §7: Per-Request Telemetry Store ─────────────────────────────────
+//
+// Bounded ring stores — never grow unbounded:
+//   rawRequests    : last 5,000 individual request records
+//   secondBuckets  : 1-second aggregates, kept 60 minutes (3600 slots)
+//   minuteBuckets  : 1-minute aggregates, kept 24 hours  (1440 slots)
+//
+// Each raw record:
+//   { ts, path, cacheResult, statusCode, totalMs, bytes, originMs }
+//   cacheResult: 'HIT' | 'MISS' | 'CONTROL' (non-media paths)
+//   originMs: null on HIT (served from cache), number on MISS
+//
+// Buckets are plain objects keyed by ISO second/minute string:
+//   { key, requests, hits, misses, totalMs, bytes, originMs, p50, p95 }
+//   p50/p95 are recalculated lazily when read via the dashboard API.
+
+const RAW_MAX         = 5000;
+const SEC_BUCKET_MAX  = 3600;  // 60 minutes of seconds
+const MIN_BUCKET_MAX  = 1440;  // 24 hours of minutes
+
+const rawRequests   = [];   // ring: newest appended, oldest shifted when full
+const secondBuckets = [];   // ring: keyed by second ISO string
+const minuteBuckets = [];   // ring: keyed by minute ISO string
+
+// Helpers to get bucket keys
+function secKey(ts)  { return new Date(ts).toISOString().slice(0, 19); }  // YYYY-MM-DDTHH:MM:SS
+function minKey(ts)  { return new Date(ts).toISOString().slice(0, 16); }  // YYYY-MM-DDTHH:MM
+
+function upsertBucket(ring, key, maxLen, record) {
+  let bucket = ring.length > 0 && ring[ring.length - 1].key === key
+    ? ring[ring.length - 1]
+    : null;
+
+  if (!bucket) {
+    bucket = { key, requests: 0, hits: 0, misses: 0, totalMs: 0, bytes: 0, originMs: 0, latencies: [] };
+    ring.push(bucket);
+    if (ring.length > maxLen) ring.shift();
+  }
+
+  bucket.requests++;
+  if (record.cacheResult === 'HIT')  bucket.hits++;
+  if (record.cacheResult === 'MISS') bucket.misses++;
+  bucket.totalMs += record.totalMs;
+  bucket.bytes   += record.bytes;
+  if (record.originMs != null) bucket.originMs += record.originMs;
+  // Keep last 200 latencies per bucket for percentile calc (capped to avoid memory blow-up)
+  if (bucket.latencies.length < 200) bucket.latencies.push(record.totalMs);
+}
+
+function percentile(sortedArr, p) {
+  if (!sortedArr || sortedArr.length === 0) return 0;
+  const idx = Math.ceil((p / 100) * sortedArr.length) - 1;
+  return sortedArr[Math.max(0, idx)];
+}
+
+function recordRequest(record) {
+  // raw ring
+  rawRequests.push(record);
+  if (rawRequests.length > RAW_MAX) rawRequests.shift();
+
+  // bucket rings
+  upsertBucket(secondBuckets, secKey(record.ts), SEC_BUCKET_MAX, record);
+  upsertBucket(minuteBuckets, minKey(record.ts), MIN_BUCKET_MAX, record);
+
+  // CSV append (non-blocking, errors logged but not thrown)
+  if (DASHBOARD_ENABLED) appendCsv(record);
+
+  // Notify SSE clients
+  broadcastSse({ type: 'request', data: record });
+}
+
+// ─── ADDITIVE §8: CSV Export ──────────────────────────────────────────────────
+
+const CSV_HEADER = 'ts,path,cacheResult,statusCode,totalMs,bytes,originMs\n';
+
+function todayCsvPath() {
+  const d = new Date().toISOString().slice(0, 10);
+  return path.join(EXPORT_DIR, `requests-${d}.csv`);
+}
+
+function ensureExportDir() {
+  if (!fs.existsSync(EXPORT_DIR)) {
+    fs.mkdirSync(EXPORT_DIR, { recursive: true });
+  }
+}
+
+let _csvFileInited = false;
+function appendCsv(record) {
+  try {
+    ensureExportDir();
+    const filePath = todayCsvPath();
+    const needsHeader = !_csvFileInited && !fs.existsSync(filePath);
+    _csvFileInited = true;
+    const line = `${record.ts},${record.path},${record.cacheResult},${record.statusCode},${record.totalMs},${record.bytes},${record.originMs ?? ''}\n`;
+    fs.appendFileSync(filePath, needsHeader ? CSV_HEADER + line : line);
+  } catch (err) {
+    // Log but never crash the main server over a CSV write failure
+    console.error(`[csv] Failed to write CSV: ${err.message}`);
+  }
+}
+
+// ─── ADDITIVE §9: SSE Broadcast ───────────────────────────────────────────────
+
+const sseClients = new Set();
+
+function broadcastSse(payload) {
+  if (sseClients.size === 0) return;
+  const data = `data: ${JSON.stringify(payload)}\n\n`;
+  for (const res of sseClients) {
+    try { res.write(data); } catch (_) { sseClients.delete(res); }
+  }
+}
+
+// Periodic SSE heartbeat to keep connections alive through proxies/firewalls
+setInterval(() => {
+  broadcastSse({ type: 'ping', ts: Date.now() });
+}, 15000).unref();
+
+// ─── ADDITIVE §10: Telemetry Middleware (wraps handleProxyMedia) ──────────────
+// This is wired in below, after handleProxyMedia is defined.
+
+// ─── Media Proxy Handler ─────────────────────────────────────────────────────
+
 async function handleProxyMedia(req, res, subPath) {
   requestsServed++;
-  const cacheKey = subPath;
+  const cacheKey  = subPath;
+  const reqStart  = Date.now();
+  let cacheResult = 'MISS';
+  let originMs    = null;
+
+  // Intercept res.end to capture status and bytes for telemetry
+  const origEnd  = res.end.bind(res);
+  let bytesSent  = 0;
+  const origWrite = res.write.bind(res);
+
+  res.write = function(chunk, ...args) {
+    if (chunk) bytesSent += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
+    return origWrite(chunk, ...args);
+  };
+
+  res.end = function(chunk, ...args) {
+    if (chunk) bytesSent += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
+    const totalMs = Date.now() - reqStart;
+    recordRequest({
+      ts:          new Date(reqStart).toISOString(),
+      path:        subPath,
+      cacheResult,
+      statusCode:  res.statusCode,
+      totalMs,
+      bytes:       bytesSent,
+      originMs,
+    });
+    return origEnd(chunk, ...args);
+  };
 
   if (segmentCache.has(cacheKey)) {
     cacheHits++;
+    cacheResult = 'HIT';
     const cached = segmentCache.get(cacheKey);
 
     setTimeout(() => {
@@ -371,7 +540,9 @@ async function handleProxyMedia(req, res, subPath) {
 
   setTimeout(async () => {
     try {
+      const originStart    = Date.now();
       const originResponse = await makeRequest(targetUrl, { method: 'GET', timeout: 8000 });
+      originMs             = Date.now() - originStart;
 
       res.status(originResponse.statusCode);
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -431,5 +602,168 @@ app.listen(PORT, BIND_HOST, () => {
   console.log(`║  Origin URL      : ${ORIGIN_URL.padEnd(42)}║`);
   console.log(`║  Health Endpoint : http://localhost:${PORT}/health${' '.repeat(20 - String(PORT).length)}║`);
   console.log(`║  Metrics         : http://localhost:${PORT}/metrics${' '.repeat(19 - String(PORT).length)}║`);
+  if (DASHBOARD_ENABLED) {
+  console.log(`║  Dashboard API   : http://127.0.0.1:${DASHBOARD_PORT}/api/stats${' '.repeat(16 - String(DASHBOARD_PORT).length)}║`);
+  }
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
 });
+
+// ─── ADDITIVE §11: Local Dashboard API Server (127.0.0.1 only) ───────────────
+//
+// Bound exclusively to 127.0.0.1 — never reachable through Tailscale Funnel.
+// The Funnel only forwards to the agent port (PORT / 5001).
+
+if (DASHBOARD_ENABLED) {
+  const dash = express();
+  dash.use(cors({ origin: 'http://127.0.0.1:' + DASHBOARD_PORT }));
+  dash.use(express.json());
+
+  // Helper: compute percentiles from a bucket's latencies array
+  function bucketPercentiles(bucket) {
+    if (!bucket.latencies || bucket.latencies.length === 0) return { p50: 0, p95: 0 };
+    const sorted = [...bucket.latencies].sort((a, b) => a - b);
+    return {
+      p50: percentile(sorted, 50),
+      p95: percentile(sorted, 95),
+    };
+  }
+
+  // GET /api/stats — current snapshot
+  dash.get('/api/stats', (_req, res) => {
+    const allLatencies = rawRequests.map(r => r.totalMs).sort((a, b) => a - b);
+    const hitLatencies = rawRequests.filter(r => r.cacheResult === 'HIT').map(r => r.totalMs).sort((a, b) => a - b);
+    const missLatencies = rawRequests.filter(r => r.cacheResult === 'MISS').map(r => r.totalMs).sort((a, b) => a - b);
+    const totalBytes = rawRequests.reduce((s, r) => s + r.bytes, 0);
+    const cacheBytes = rawRequests.filter(r => r.cacheResult === 'HIT').reduce((s, r) => s + r.bytes, 0);
+    const originBytes = rawRequests.filter(r => r.cacheResult === 'MISS').reduce((s, r) => s + r.bytes, 0);
+    const missWithOrigin = rawRequests.filter(r => r.originMs != null);
+    const avgOriginMs = missWithOrigin.length > 0
+      ? Math.round(missWithOrigin.reduce((s, r) => s + r.originMs, 0) / missWithOrigin.length)
+      : null;
+    const avgHitMs = hitLatencies.length > 0
+      ? Math.round(hitLatencies.reduce((a, b) => a + b, 0) / hitLatencies.length)
+      : null;
+    const latencySavedMs = (avgOriginMs != null && avgHitMs != null)
+      ? Math.max(0, avgOriginMs - avgHitMs)
+      : null;
+
+    // Rough throughput: bytes served in the last 60 seconds
+    const now = Date.now();
+    const recentBytes = rawRequests
+      .filter(r => now - new Date(r.ts).getTime() < 60000)
+      .reduce((s, r) => s + r.bytes, 0);
+    const throughputMbps = parseFloat(((recentBytes * 8) / 1e6 / 60).toFixed(3));
+
+    res.json({
+      edgeId,
+      label:          NODE_LABEL,
+      mode:           IS_PUBLIC_TUNNEL ? 'public' : 'lan',
+      publicUrl:      MY_URL,
+      isRegistered,
+      isOutage,
+      uptime_s:       Math.round(process.uptime()),
+      requestsServed: rawRequests.length,
+      cacheHitRatio:  getCacheHitRatio(),
+      p50_ms:         percentile(allLatencies, 50),
+      p95_ms:         percentile(allLatencies, 95),
+      avgOriginMs,
+      avgHitMs,
+      latencySavedMs,
+      throughputMbps,
+      totalBytes,
+      cacheBytes,
+      originBytes,
+      dataSavedBytes: cacheBytes,
+      cachedSegments: segmentCache.size,
+      currentDelayMs,
+      timestamp:      new Date().toISOString(),
+    });
+  });
+
+  // GET /api/series?window=seconds|minutes — time-series data for charts
+  dash.get('/api/series', (req, res) => {
+    const window = req.query.window === 'minutes' ? 'minutes' : 'seconds';
+    const ring   = window === 'minutes' ? minuteBuckets : secondBuckets;
+
+    const series = ring.map(b => {
+      const p = bucketPercentiles(b);
+      const hitRatio = b.requests > 0 ? parseFloat((b.hits / b.requests).toFixed(4)) : 0;
+      const throughputMbps = parseFloat(((b.bytes * 8) / 1e6 / (window === 'minutes' ? 60 : 1)).toFixed(3));
+      return {
+        key:            b.key,
+        requests:       b.requests,
+        hits:           b.hits,
+        misses:         b.misses,
+        hitRatio,
+        totalMs:        b.totalMs,
+        avgMs:          b.requests > 0 ? Math.round(b.totalMs / b.requests) : 0,
+        p50:            p.p50,
+        p95:            p.p95,
+        bytes:          b.bytes,
+        throughputMbps,
+        originMs:       b.misses > 0 ? Math.round(b.originMs / b.misses) : 0,
+      };
+    });
+
+    res.json({ window, series });
+  });
+
+  // GET /api/requests?limit=N&offset=M — paginated raw request log
+  dash.get('/api/requests', (req, res) => {
+    const limit  = Math.min(500, parseInt(req.query.limit  || '100', 10));
+    const offset = parseInt(req.query.offset || '0', 10);
+    const slice  = rawRequests.slice(-(offset + limit), rawRequests.length - offset || undefined).reverse();
+    res.json({ total: rawRequests.length, limit, offset, requests: slice });
+  });
+
+  // GET /api/export.csv — download today's CSV
+  dash.get('/api/export.csv', (req, res) => {
+    const filePath = todayCsvPath();
+    if (!fs.existsSync(filePath)) {
+      // Return an in-memory CSV of current raw requests if no file yet
+      const lines = rawRequests.map(r =>
+        `${r.ts},${r.path},${r.cacheResult},${r.statusCode},${r.totalMs},${r.bytes},${r.originMs ?? ''}`
+      );
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="requests-${new Date().toISOString().slice(0,10)}.csv"`);
+      return res.send(CSV_HEADER + lines.join('\n'));
+    }
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
+    res.sendFile(filePath);
+  });
+
+  // POST /api/reset — reset in-memory stats (keeps CSV)
+  dash.post('/api/reset', (_req, res) => {
+    rawRequests.length    = 0;
+    secondBuckets.length  = 0;
+    minuteBuckets.length  = 0;
+    cacheHits   = 0;
+    cacheMisses = 0;
+    requestsServed = 0;
+    logEvent('STATS_RESET', {});
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // GET /api/stream — Server-Sent Events for live dashboard updates
+  dash.get('/api/stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    sseClients.add(res);
+
+    // Send immediate snapshot on connect
+    res.write(`data: ${JSON.stringify({ type: 'connected', edgeId, ts: Date.now() })}\n\n`);
+
+    req.on('close', () => {
+      sseClients.delete(res);
+    });
+  });
+
+  dash.listen(DASHBOARD_PORT, '127.0.0.1', () => {
+    console.log(`[dashboard] Local API listening on http://127.0.0.1:${DASHBOARD_PORT} (not tunnelled)`);
+  });
+}

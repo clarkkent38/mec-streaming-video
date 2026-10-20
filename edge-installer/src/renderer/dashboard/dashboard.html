@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"/>
+  <title>EdgeNest — Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css"/>
+</head>
+<body class="light">
+
+  <!-- ── Top bar ── -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">⬡</span>
+      <span class="app-name">EdgeNest</span>
+      <span class="sep">|</span>
+      <span id="nodeNameDisplay" class="node-name">—</span>
+    </div>
+    <div class="topbar-center">
+      <div id="stateBadge" class="state-badge state-offline">OFFLINE</div>
+      <span id="stateDetail" class="state-detail"></span>
+    </div>
+    <div class="topbar-right">
+      <span id="publicUrlDisplay" class="url-display"></span>
+      <button id="btnCopyUrl"   class="btn-icon" title="Copy public URL">⧉</button>
+      <button id="btnDarkMode"  class="btn-icon" title="Toggle dark mode">◑</button>
+      <button id="btnSettings"  class="btn-icon" title="Settings">⚙</button>
+      <span id="uptimeDisplay"  class="uptime"></span>
+    </div>
+  </header>
+
+  <!-- ── Progress ticks (visible while not LIVE) ── -->
+  <div id="progressRow" class="progress-row">
+    <div class="tick" id="tick-agent">   <span class="tick-dot"></span> Agent started</div>
+    <div class="tick" id="tick-health">  <span class="tick-dot"></span> Health OK</div>
+    <div class="tick" id="tick-funnel">  <span class="tick-dot"></span> Funnel active</div>
+    <div class="tick" id="tick-registered"><span class="tick-dot"></span> Registered</div>
+    <div class="tick" id="tick-verified"><span class="tick-dot"></span> Verified by orchestrator</div>
+    <div class="tick" id="tick-live">    <span class="tick-dot"></span> LIVE</div>
+  </div>
+
+  <!-- ── Help callout ── -->
+  <div class="help-banner">
+    ℹ <strong>Reading the numbers:</strong>
+    <em>Edge latency</em> is measured server-side at this PC (cache hit/miss delay).
+    <em>Orchestrator RTT</em> is measured from the cloud orchestrator to this node's public URL — it includes the full internet + Funnel path.
+    Neither equals what a viewer's player experiences end-to-end.
+  </div>
+
+  <!-- ── KPI cards ── -->
+  <div class="kpi-row" id="kpiRow">
+    <div class="kpi-card"><div class="kpi-val" id="kpi-requests">—</div><div class="kpi-label">Requests served</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-hitRatio">—</div><div class="kpi-label">Cache hit ratio</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-p50">—</div><div class="kpi-label">p50 latency</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-p95">—</div><div class="kpi-label">p95 latency</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-throughput">—</div><div class="kpi-label">Throughput</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-saved">—</div><div class="kpi-label">Data saved vs origin</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-latencySaved">—</div><div class="kpi-label">Latency saved</div></div>
+    <div class="kpi-card"><div class="kpi-val" id="kpi-orchRtt">—</div><div class="kpi-label">Orchestrator RTT</div></div>
+  </div>
+
+  <!-- ── Window selector ── -->
+  <div class="window-row">
+    <label class="window-label">Time window:</label>
+    <button class="win-btn active" data-win="seconds" id="winSeconds">Last 60 min (seconds)</button>
+    <button class="win-btn" data-win="minutes" id="winMinutes">Last 24 h (minutes)</button>
+  </div>
+
+  <!-- ── Charts grid ── -->
+  <div class="charts-grid">
+    <div class="chart-card span2">
+      <div class="chart-title">Response Latency (ms) — Hit vs Miss</div>
+      <canvas id="chartLatency"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Throughput (Mbps)</div>
+      <canvas id="chartThroughput"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Cache Hit Ratio (%)</div>
+      <canvas id="chartHitRatio"></canvas>
+    </div>
+    <div class="chart-card span2">
+      <div class="chart-title">Bytes: Cache Served vs Origin Fetched (stacked)</div>
+      <canvas id="chartBytes"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Origin Fetch Time vs Hit Latency (ms)</div>
+      <canvas id="chartOriginVsHit"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Orchestrator RTT to This Edge (ms)</div>
+      <canvas id="chartOrchRtt"></canvas>
+    </div>
+    <div class="chart-card span2">
+      <div class="chart-title">Requests / second</div>
+      <canvas id="chartRps"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Heartbeat timeline ── -->
+  <div class="section-title">Heartbeat &amp; Registration Timeline</div>
+  <div id="heartbeatTimeline" class="heartbeat-timeline"></div>
+
+  <!-- ── Request table ── -->
+  <div class="section-header">
+    <div class="section-title">Latest Requests</div>
+    <div class="section-actions">
+      <button id="btnExportCsv"  class="btn-secondary">⬇ Export CSV</button>
+      <button id="btnResetStats" class="btn-secondary btn-danger-ghost">✕ Reset Stats</button>
+      <button id="btnSelfTest"   class="btn-secondary">▶ Run Self-Test</button>
+      <button id="btnDiag"       class="btn-secondary">📋 Copy Diagnostics</button>
+      <button id="btnQr"         class="btn-secondary">QR Code</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table class="req-table">
+      <thead>
+        <tr>
+          <th>Time</th><th>Path</th><th>Cache</th>
+          <th>Status</th><th>Total ms</th><th>Origin ms</th><th>Bytes</th>
+        </tr>
+      </thead>
+      <tbody id="reqTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── Self-test results panel ── -->
+  <div id="selfTestPanel" class="selftest-panel" style="display:none">
+    <div class="section-title">Self-Test Results</div>
+    <div id="selfTestResults"></div>
+  </div>
+
+  <!-- ── QR modal ── -->
+  <div id="qrModal" class="modal" style="display:none">
+    <div class="modal-box">
+      <div class="modal-title">Scan to open on your phone</div>
+      <canvas id="qrCanvas" width="200" height="200"></canvas>
+      <div id="qrUrl" class="mono" style="margin-top:8px;font-size:12px"></div>
+      <button id="btnCloseQr" class="btn-secondary" style="margin-top:12px">Close</button>
+    </div>
+  </div>
+
+  <script src="../../vendor/chart.umd.min.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

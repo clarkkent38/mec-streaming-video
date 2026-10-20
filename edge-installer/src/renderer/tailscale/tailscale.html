@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"/>
+  <title>EdgeNest — Tailscale Assistant</title>
+  <link rel="stylesheet" href="tailscale.css"/>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">⬡</div>
+    <div>
+      <h1>Tailscale Setup</h1>
+      <p class="subtitle">Make your edge node reachable from the internet</p>
+    </div>
+  </div>
+
+  <!-- Checklist -->
+  <div class="checklist" id="checklist">
+
+    <div class="step" id="step-installed">
+      <div class="step-icon" id="icon-installed">○</div>
+      <div class="step-body">
+        <div class="step-title">Tailscale installed</div>
+        <div class="step-detail" id="detail-installed">Checking…</div>
+        <div class="step-actions" id="actions-installed"></div>
+      </div>
+    </div>
+
+    <div class="step" id="step-login">
+      <div class="step-icon" id="icon-login">○</div>
+      <div class="step-body">
+        <div class="step-title">Logged in &amp; connected</div>
+        <div class="step-detail" id="detail-login">Waiting…</div>
+        <div class="step-actions" id="actions-login"></div>
+      </div>
+    </div>
+
+    <div class="step" id="step-https">
+      <div class="step-icon" id="icon-https">○</div>
+      <div class="step-body">
+        <div class="step-title">HTTPS Certificates &amp; Funnel enabled</div>
+        <div class="step-detail" id="detail-https">Waiting…</div>
+        <div class="step-actions" id="actions-https"></div>
+      </div>
+    </div>
+
+    <div class="step" id="step-funnel">
+      <div class="step-icon" id="icon-funnel">○</div>
+      <div class="step-body">
+        <div class="step-title">Funnel active for this port</div>
+        <div class="step-detail" id="detail-funnel">Waiting…</div>
+        <div class="step-actions" id="actions-funnel"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Public URL display -->
+  <div class="url-box" id="urlBox" style="display:none">
+    <div class="url-label">Public HTTPS URL</div>
+    <div class="url-row">
+      <span id="publicUrlText" class="url-value"></span>
+      <button id="btnCopyUrl" class="btn-secondary">Copy</button>
+    </div>
+    <div class="url-hint">
+      Verify: turn off Wi-Fi on your phone (use mobile data) and open
+      <span id="healthUrl" class="mono"></span> — if it loads, the tunnel is live.
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <button id="btnBack" class="btn-ghost">← Back to Setup</button>
+    <div class="spacer"></div>
+    <button id="btnRetry" class="btn-secondary">↺ Retry</button>
+    <button id="btnContinue" class="btn-primary" disabled>Continue →</button>
+  </div>
+
+  <script src="tailscale.js"></script>
+</body>
+</html>

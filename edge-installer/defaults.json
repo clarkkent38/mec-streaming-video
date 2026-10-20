@@ -1,0 +1,9 @@
+{
+  "_comment": "Edit these URLs here if Render re-deploys with new service slugs — no rebuild needed.",
+  "orchestratorUrl": "https://orchestrator-id88.onrender.com",
+  "originUrl": "https://origin-server-1ge5.onrender.com",
+  "agentPort": 5001,
+  "dashboardPort": 5002,
+  "delayMs": 0,
+  "mode": "public"
+}

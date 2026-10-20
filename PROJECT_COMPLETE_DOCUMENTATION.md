@@ -35,8 +35,8 @@ The system is deployed in a **Hybrid Cloud Architecture**, separating static Edg
 | Service | Host Platform | Production Public URL | Role & Endpoints |
 |---|---|---|---|
 | **Frontend Web App** | **Vercel** | `https://<your-app>.vercel.app` | React 18 / Vite dashboard, interactive topology, publication 2x2 charts, scenario controls. |
-| **VNFM Orchestrator** | **Render** | `https://orchestrator-xfwd.onrender.com` | `GET /health`<br>`GET /api/mec/stats`<br>`GET /api/orchestrator/routes` |
-| **Origin Cloud Server** | **Render** | `https://origin-server-h42h.onrender.com` | `GET /dash/manifest.mpd`<br>`GET /dash/seg-*.m4s`<br>`GET /health` |
+| **VNFM Orchestrator** | **Render** | `https://orchestrator-id88.onrender.com` | `GET /health`<br>`GET /api/mec/stats`<br>`GET /api/orchestrator/routes` |
+| **Origin Cloud Server** | **Render** | `https://origin-server-1ge5.onrender.com` | `GET /dash/manifest.mpd`<br>`GET /dash/seg-*.m4s`<br>`GET /health` |
 | **MEC Edge Node 1 (Primary)** | **Render** | `https://edge-node-1.onrender.com` | `GET /dash/manifest.mpd`<br>`GET /dash/seg-*.m4s`<br>`POST /api/latency` (5ms baseline) |
 | **MEC Edge Node 2 (Backup)** | **Render** | `https://edge-node-2.onrender.com` | `GET /dash/manifest.mpd`<br>`GET /dash/seg-*.m4s`<br>`POST /api/latency` (15ms baseline) |
 
@@ -176,9 +176,9 @@ The frontend includes a **Publication Benchmark Dashboard** (`PaperGraphsDashboa
   ```
 - **Environment Variables (`.env.production`):**
   ```bash
-  VITE_ORCHESTRATOR_URL=https://orchestrator-xfwd.onrender.com
-  VITE_ORIGIN_URL=https://origin-server-h42h.onrender.com
-  VITE_ORIGIN_MANIFEST=https://origin-server-h42h.onrender.com/dash/manifest.mpd
+  VITE_ORCHESTRATOR_URL=https://orchestrator-id88.onrender.com
+  VITE_ORIGIN_URL=https://origin-server-1ge5.onrender.com
+  VITE_ORIGIN_MANIFEST=https://origin-server-1ge5.onrender.com/dash/manifest.mpd
   VITE_EDGE1_URL=https://edge-node-1.onrender.com
   VITE_EDGE2_URL=https://edge-node-2.onrender.com
   ```

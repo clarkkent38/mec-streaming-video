@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"/>
+  <title>EdgeNest — Setup</title>
+  <link rel="stylesheet" href="setup.css"/>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">⬡</div>
+    <div>
+      <h1>EdgeNest</h1>
+      <p class="subtitle">Set up your MEC Edge Node</p>
+    </div>
+  </div>
+
+  <form id="setupForm" novalidate>
+
+    <!-- Node name -->
+    <div class="field-group">
+      <label for="nodeLabel">Node Name <span class="required">*</span></label>
+      <input id="nodeLabel" type="text" placeholder="MYPC-Edge" maxlength="40" autocomplete="off"/>
+      <span class="field-hint">Letters, digits and dashes. Shown in the frontend topology map.</span>
+      <span class="field-error" id="err-nodeLabel"></span>
+    </div>
+
+    <!-- Mode -->
+    <div class="field-group">
+      <label>Connection Mode <span class="required">*</span></label>
+      <div class="radio-group">
+        <label class="radio-label">
+          <input type="radio" name="mode" value="public" checked/>
+          <span><strong>Public (Tailscale Funnel)</strong> — reachable from the internet and Vercel</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="mode" value="lan"/>
+          <span><strong>LAN Only</strong> — reachable on the same Wi-Fi network only
+            <em class="warn-inline">⚠ The Vercel frontend cannot reach a LAN address.</em>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Orchestrator URL -->
+    <div class="field-group">
+      <label for="orchestratorUrl">Orchestrator URL <span class="required">*</span></label>
+      <div class="input-row">
+        <input id="orchestratorUrl" type="url" placeholder="https://orchestrator-xfwd.onrender.com" autocomplete="off"/>
+        <button type="button" id="testOrch" class="btn-secondary">Test</button>
+      </div>
+      <span class="field-hint">The Render VNFM controller. Free-tier may take up to 90 s to wake.</span>
+      <span class="field-error" id="err-orchestratorUrl"></span>
+      <span class="test-result" id="res-orch"></span>
+    </div>
+
+    <!-- Origin URL -->
+    <div class="field-group">
+      <label for="originUrl">Origin URL <span class="required">*</span></label>
+      <div class="input-row">
+        <input id="originUrl" type="url" placeholder="https://origin-server-h42h.onrender.com" autocomplete="off"/>
+        <button type="button" id="testOrigin" class="btn-secondary">Test</button>
+      </div>
+      <span class="field-hint">The Render DASH origin server.</span>
+      <span class="field-error" id="err-originUrl"></span>
+      <span class="test-result" id="res-origin"></span>
+    </div>
+
+    <!-- Advanced section -->
+    <details class="advanced" id="advancedSection">
+      <summary>Advanced settings</summary>
+
+      <div class="field-group">
+        <label for="agentPort">Agent Port</label>
+        <div class="input-row narrow">
+          <input id="agentPort" type="number" min="1024" max="65535" value="5001"/>
+          <button type="button" id="checkPort" class="btn-secondary">Check</button>
+        </div>
+        <span class="field-hint">Port the edge agent listens on. Must be free.</span>
+        <span class="field-error" id="err-agentPort"></span>
+        <span class="test-result" id="res-port"></span>
+      </div>
+
+      <div class="field-group">
+        <label for="dashboardPort">Dashboard Port</label>
+        <input id="dashboardPort" type="number" min="1024" max="65535" value="5002"/>
+        <span class="field-hint">Local-only dashboard API port (127.0.0.1). Never exposed publicly.</span>
+        <span class="field-error" id="err-dashboardPort"></span>
+      </div>
+
+      <div class="field-group">
+        <label for="delayMs">Simulated Delay (ms)</label>
+        <input id="delayMs" type="number" min="0" max="2000" value="0"/>
+        <span class="field-hint warn-inline">⚠ Set to 0 for real latency measurements. Non-zero values are for lab simulation only.</span>
+      </div>
+    </details>
+
+    <!-- Start with Windows -->
+    <div class="field-group checkbox-row">
+      <label class="checkbox-label">
+        <input type="checkbox" id="startWithWindows"/>
+        Start EdgeNest with Windows
+      </label>
+    </div>
+
+    <!-- Buttons -->
+    <div class="button-row">
+      <button type="button" id="btnRestoreDefaults" class="btn-ghost">Restore Defaults</button>
+      <div class="spacer"></div>
+      <button type="submit" id="btnSave" class="btn-primary">Save &amp; Continue →</button>
+    </div>
+
+  </form>
+
+  <!-- Status bar -->
+  <div class="status-bar" id="statusBar"></div>
+
+  <script src="setup.js"></script>
+</body>
+</html>
