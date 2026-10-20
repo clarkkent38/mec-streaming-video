@@ -1,29 +1,28 @@
 'use strict';
 /**
  * tailscale.js — Tailscale Assistant renderer
- * Drives the 4-step checklist, retries on a 3 s interval, surfaces admin
- * console links as buttons when HTTPS/Funnel permissions are missing.
+ * Never spins forever. After 20 s timeout, shows plain-language manual steps
+ * with browser-opening buttons for each admin console page.
  */
 
 const api = window.edgenest;
-const { TS_CHECK_INTERVAL_MS = 3000 } = {};
 
-let _pollTimer  = null;
-let _adminLink  = null;
-let _publicUrl  = null;
+let _pollTimer = null;
+let _publicUrl = null;
 
-// ── Icon helpers ─────────────────────────────────────────────────────────────
+// ── Step icon helper ──────────────────────────────────────────────────────────
 function setStep(id, state, detail, actions = []) {
   const stepEl   = document.getElementById(`step-${id}`);
   const iconEl   = document.getElementById(`icon-${id}`);
   const detailEl = document.getElementById(`detail-${id}`);
   const actEl    = document.getElementById(`actions-${id}`);
+  if (!stepEl) return;
 
   const icons = { ok: '✓', fail: '✗', pending: '⟳', waiting: '○' };
-  stepEl.className  = `step ${state}`;
-  iconEl.className  = `step-icon ${state}`;
-  iconEl.textContent = icons[state] || '○';
-  detailEl.textContent = detail;
+  stepEl.className      = `step ${state}`;
+  iconEl.className      = `step-icon ${state}`;
+  iconEl.textContent    = icons[state] || '○';
+  detailEl.textContent  = detail;
 
   actEl.innerHTML = '';
   actions.forEach(({ label, cls, fn }) => {
@@ -35,23 +34,17 @@ function setStep(id, state, detail, actions = []) {
   });
 }
 
-// ── Apply status from main process ───────────────────────────────────────────
+// ── Apply status ──────────────────────────────────────────────────────────────
 function applyStatus(s) {
-  _adminLink = s.adminLink || null;
   _publicUrl = s.publicUrl || null;
 
   // Step 1 — Installed
   if (!s.installed) {
-    setStep('installed', 'fail',
-      'Tailscale is not installed. Install it to continue.',
-      [
-        { label: 'Download Tailscale', cls: 'btn-secondary', fn: () => api.openExternal('https://tailscale.com/download/windows') },
-        { label: 'Install via winget', cls: 'btn-ghost',    fn: () => api.openExternal('https://tailscale.com/download/windows') },
-      ]
-    );
-    setStep('login',   'waiting', 'Waiting for Tailscale…');
-    setStep('https',   'waiting', 'Waiting for Tailscale…');
-    setStep('funnel',  'waiting', 'Waiting for Tailscale…');
+    setStep('installed', 'fail', 'Tailscale is not installed.', [
+      { label: '⬇ Download Tailscale', cls: 'btn-secondary',
+        fn: () => api.openExternal('https://tailscale.com/download/windows') },
+    ]);
+    ['login','https','funnel'].forEach(id => setStep(id, 'waiting', 'Waiting for Tailscale…'));
     return;
   }
   setStep('installed', 'ok', 'Tailscale is installed.');
@@ -59,93 +52,138 @@ function applyStatus(s) {
   // Step 2 — Logged in
   if (!s.loggedIn) {
     setStep('login', 'fail',
-      'Not logged in or not connected. Click Log In to open the Tailscale browser page.',
+      'Not logged in. Click Log In — your browser will open the Tailscale sign-in page.',
       [{ label: 'Log In to Tailscale', cls: 'btn-secondary', fn: handleLogin }]
     );
-    setStep('https',  'waiting', 'Waiting for login…');
-    setStep('funnel', 'waiting', 'Waiting for login…');
+    ['https','funnel'].forEach(id => setStep(id, 'waiting', 'Waiting for login…'));
     return;
   }
   setStep('login', 'ok', `Connected as ${s.dnsName}`);
 
   // Step 3 — HTTPS + Funnel ACL
-  if (s.httpsEnabled === false) {
-    const actions = [{ label: 'Retry', cls: 'btn-secondary', fn: handleEnableFunnel }];
-    if (_adminLink) {
-      actions.unshift({
-        label: 'Open Tailscale Admin Console',
-        cls: 'btn-warn',
-        fn: () => api.openExternal(_adminLink),
-      });
-    }
+  if (s.httpsEnabled === false || s.funnelStuck) {
+    // Always show the two manual admin links — no guessing
     setStep('https', 'fail',
-      _adminLink
-        ? 'HTTPS Certificates or Funnel ACL is not enabled.\n1. Click "Open Tailscale Admin Console".\n2. Enable HTTPS Certificates under DNS settings.\n3. Enable Funnel under Access Controls or Feature Previews.\n4. Click Retry.'
-        : (s.lastError || 'Could not activate Funnel.'),
-      actions
+      'Funnel is not enabled. Follow these steps:',
+      [
+        {
+          label: '1️⃣  Enable HTTPS Certificates (DNS page)',
+          cls: 'btn-warn',
+          fn: () => api.openExternal('https://login.tailscale.com/admin/dns'),
+        },
+        {
+          label: '2️⃣  Enable Funnel (ACL page)',
+          cls: 'btn-warn',
+          fn: () => api.openExternal('https://login.tailscale.com/admin/acls'),
+        },
+        {
+          label: '↺ Retry after enabling both',
+          cls: 'btn-secondary',
+          fn: handleEnableFunnel,
+        },
+      ]
     );
-    setStep('funnel', 'waiting', 'Waiting for HTTPS/Funnel approval…');
+    showManualInstructions();
+    setStep('funnel', 'waiting', 'Waiting for Funnel approval…');
     return;
   }
 
   if (s.httpsEnabled === null) {
-    setStep('https', 'pending', 'Activating Funnel…');
+    setStep('https', 'pending', 'Activating Funnel… (may take up to 20 s)');
     setStep('funnel', 'waiting', 'Waiting…');
     return;
   }
 
   setStep('https', 'ok', 'HTTPS Certificates and Funnel ACL are active.');
 
-  // Step 4 — Funnel mapping
+  // Step 4 — Funnel mapping active
   if (!s.funnelActive) {
-    setStep('funnel', 'fail',
-      'Funnel mapping could not be verified. Try clicking Retry.',
-      [{ label: 'Retry', cls: 'btn-secondary', fn: handleEnableFunnel }]
-    );
+    setStep('funnel', 'fail', 'Funnel mapping not confirmed.', [
+      { label: '↺ Retry', cls: 'btn-secondary', fn: handleEnableFunnel },
+    ]);
     return;
   }
 
-  setStep('funnel', 'ok', `Funnel is active → ${s.publicUrl}`);
-
-  // Show URL box
+  setStep('funnel', 'ok', `Funnel active → ${s.publicUrl}`);
+  hideManualInstructions();
   showPublicUrl(s.publicUrl);
-
-  // Enable Continue
   document.getElementById('btnContinue').disabled = false;
   stopPolling();
 }
 
+// ── Manual instructions block (shown when stuck) ──────────────────────────────
+function showManualInstructions() {
+  let el = document.getElementById('manualBlock');
+  if (el) { el.style.display = 'block'; return; }
+
+  el = document.createElement('div');
+  el.id = 'manualBlock';
+  el.style.cssText = 'background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:16px;margin:12px 0;font-size:13px;line-height:1.7';
+  el.innerHTML = `
+    <strong style="color:#b45309">📋 How to enable Tailscale Funnel (one-time setup):</strong>
+    <ol style="margin:8px 0 0 18px;color:#1a202c">
+      <li>Click <strong>"1️⃣ Enable HTTPS Certificates"</strong> above → it opens your Tailscale DNS admin page.</li>
+      <li>On that page, find <strong>"HTTPS Certificates"</strong> and toggle it <strong>ON</strong>. Save.</li>
+      <li>Click <strong>"2️⃣ Enable Funnel"</strong> above → it opens your Tailscale ACL admin page.</li>
+      <li>On that page, find <strong>"Funnel"</strong> under <em>Access Controls</em> or
+          <em>Feature Previews</em> and enable it. Save.</li>
+      <li>Come back here and click <strong>"↺ Retry"</strong>.</li>
+    </ol>
+    <div style="margin-top:10px;color:#6b7280;font-size:12px">
+      Your machine: <strong id="machineNameInBlock"></strong><br>
+      If you don't see Funnel in the ACL editor, add this to your ACL JSON:
+      <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">"funnel": ["tag:server"]</code>
+      and tag your machine as <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">server</code>
+      on the <a href="#" id="machinesLink" style="color:#2563eb">Machines page</a>.
+    </div>
+  `;
+  document.getElementById('checklist').after(el);
+
+  // Fill machine name once available
+  api.tailscaleCheck().then(s => {
+    const nameEl = document.getElementById('machineNameInBlock');
+    if (nameEl && s.dnsName) nameEl.textContent = s.dnsName;
+  });
+
+  const ml = document.getElementById('machinesLink');
+  if (ml) ml.addEventListener('click', e => {
+    e.preventDefault();
+    api.openExternal('https://login.tailscale.com/admin/machines');
+  });
+}
+
+function hideManualInstructions() {
+  const el = document.getElementById('manualBlock');
+  if (el) el.style.display = 'none';
+}
+
+// ── Public URL display ────────────────────────────────────────────────────────
 function showPublicUrl(url) {
-  _publicUrl = url;
   const box = document.getElementById('urlBox');
+  if (!box) return;
   box.style.display = 'block';
   document.getElementById('publicUrlText').textContent = url || '';
   document.getElementById('healthUrl').textContent = (url || '') + '/health';
 }
 
-// ── Action handlers ──────────────────────────────────────────────────────────
+// ── Action handlers ───────────────────────────────────────────────────────────
 async function handleLogin() {
-  setStep('login', 'pending', 'Opening Tailscale login page…');
+  setStep('login', 'pending', 'Opening Tailscale login page in your browser…');
   await api.tailscaleLogin();
-  // Poll will pick up the result
   startPolling();
 }
 
 async function handleEnableFunnel() {
-  setStep('https', 'pending', 'Enabling Funnel…');
-  setStep('funnel', 'pending', 'Enabling Funnel…');
-  const result = await api.tailscaleEnableFunnel();
-  if (result.ok && result.adminLink) {
-    // Redundant — covered by next check() poll, but update immediately
-    _adminLink = result.adminLink;
-  }
+  setStep('https',  'pending', 'Activating Funnel… (up to 20 s)');
+  setStep('funnel', 'pending', 'Waiting…');
+  await api.tailscaleEnableFunnel();
   await runCheck();
 }
 
-// ── Polling ──────────────────────────────────────────────────────────────────
+// ── Polling ───────────────────────────────────────────────────────────────────
 async function runCheck() {
   const result = await api.tailscaleCheck();
-  if (result.ok) applyStatus(result);
+  if (result.ok !== false) applyStatus(result);
 }
 
 function startPolling() {
@@ -157,29 +195,20 @@ function stopPolling() {
   if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
 }
 
-// ── Listen for push updates from main process ─────────────────────────────────
-api.on('tailscale:update', (status) => {
-  applyStatus(status);
-});
+api.on('tailscale:update', applyStatus);
 
-// ── Buttons ──────────────────────────────────────────────────────────────────
+// ── Buttons ───────────────────────────────────────────────────────────────────
 document.getElementById('btnRetry').addEventListener('click', async () => {
-  // Re-attempt funnel activation if we're past the login step
-  const { ok, loggedIn } = await api.tailscaleCheck();
-  if (ok && loggedIn) {
-    await handleEnableFunnel();
-  } else {
-    await runCheck();
-  }
+  const { loggedIn } = await api.tailscaleCheck();
+  if (loggedIn) await handleEnableFunnel();
+  else await runCheck();
 });
 
 document.getElementById('btnCopyUrl').addEventListener('click', () => {
   if (_publicUrl) navigator.clipboard.writeText(_publicUrl);
 });
 
-document.getElementById('btnBack').addEventListener('click', () => {
-  api.openSetup();
-});
+document.getElementById('btnBack').addEventListener('click', () => api.openSetup());
 
 document.getElementById('btnContinue').addEventListener('click', async () => {
   await api.startAgent();
@@ -188,18 +217,9 @@ document.getElementById('btnContinue').addEventListener('click', async () => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async () => {
-  // Initial state: all steps pending
-  ['installed', 'login', 'https', 'funnel'].forEach(id =>
-    setStep(id, 'pending', 'Checking…')
-  );
-
+  ['installed','login','https','funnel'].forEach(id => setStep(id, 'pending', 'Checking…'));
   await runCheck();
-
-  // Auto-trigger funnel activation once logged in
   const status = await api.tailscaleCheck();
-  if (status.ok && status.loggedIn && !status.funnelActive) {
-    await handleEnableFunnel();
-  }
-
+  if (status.loggedIn && !status.funnelActive) await handleEnableFunnel();
   startPolling();
 })();
