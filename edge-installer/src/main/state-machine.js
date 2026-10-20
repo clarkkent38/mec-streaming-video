@@ -130,7 +130,15 @@ class StateMachine extends EventEmitter {
       this._degradedCount = 0;
       this._evaluate();
     } else if (event === 'stopped') {
-      this._setState(STATES.OFFLINE, `Agent stopped (code=${data?.code ?? '?'}).`);
+      // Only go OFFLINE if we're not about to restart (restarting event comes first)
+      // Use a small delay to let the 'restarting' event cancel the OFFLINE transition
+      setTimeout(() => {
+        const agentRunner = require('./agent-runner');
+        if (!agentRunner.getStatus().running) {
+          // Check if a restart is queued — if _backoffMs was reset, a restart is pending
+          this._setState(STATES.OFFLINE, `Agent stopped (code=${data?.code ?? '?'}).`);
+        }
+      }, 500);
     } else if (event === 'restarting') {
       this._setState(STATES.DEGRADED, `Agent restarting in ${data?.inMs ?? '?'} ms…`);
     } else if (event === 'error') {

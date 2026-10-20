@@ -194,17 +194,26 @@ async function _attemptFunnel(port) {
     return { ok: false, error: _status.lastError };
   }
 
-  _publicUrl           = `https://${_status.dnsName}`;
-  _funnelOwned         = true;
-  _status.funnelActive = true;
-  _status.httpsEnabled = true;
-  _status.publicUrl    = _publicUrl;
-  _status.adminLink    = null;
-  _status.funnelStuck  = false;
-  _status.lastError    = null;
+  _publicUrl             = `https://${_status.dnsName}`;
+  _funnelOwned           = true;
+  _status.funnelActive   = true;
+  _status.httpsEnabled   = true;
+  _status.publicUrl      = _publicUrl;
+  _status.adminLink      = null;
+  _status.funnelStuck    = false;
+  _status.lastError      = null;
 
+  // Persist publicUrl — but only call setPublicUrl if it changed
+  const existing = configStore.load().publicUrl;
   configStore.save({ publicUrl: _publicUrl });
-  try { require('./agent-runner').setPublicUrl(_publicUrl); } catch (_) {}
+
+  if (existing !== _publicUrl) {
+    // URL genuinely changed — restart agent to re-register with new URL
+    try {
+      require('./agent-runner').setPublicUrl(_publicUrl);
+    } catch (_) {}
+  }
+  // If URL is the same (re-check after retry), do NOT restart the agent
 
   log.info('[tailscale] Funnel active:', _publicUrl);
   broadcastStatus();

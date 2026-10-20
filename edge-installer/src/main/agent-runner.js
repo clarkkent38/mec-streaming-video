@@ -89,18 +89,30 @@ function ensureAgentDeps(agentDir) {
 // ── Environment builder ───────────────────────────────────────────────────────
 
 function buildEnv(cfg, publicUrl) {
+  // Generate a stable edgeId from the node label and persist it.
+  // Without this, server.js generates a new random suffix every start,
+  // causing the orchestrator to see a brand-new edge each restart.
+  if (!cfg.edgeId) {
+    const label = (cfg.nodeLabel || 'EdgeNest').toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const suffix = Math.random().toString(36).substring(2, 6);
+    cfg.edgeId = `${label}-${suffix}`;
+    configStore.save({ edgeId: cfg.edgeId });
+    log.info('[agent-runner] Generated stable edgeId:', cfg.edgeId);
+  }
+
   return {
     ...process.env,                               // inherit PATH, USERPROFILE, etc.
     PORT:                String(cfg.agentPort     || 5001),
     DASHBOARD_PORT:      String(cfg.dashboardPort || 5002),
     BIND_HOST:           '0.0.0.0',               // reachable via Funnel / LAN
     NODE_LABEL:          cfg.nodeLabel             || 'EdgeNest',
+    EDGE_ID:             cfg.edgeId,              // stable — survives restarts
     ORCHESTRATOR_URL:    cfg.orchestratorUrl        || '',
     ORIGIN_URL:          cfg.originUrl              || '',
     DELAY_MS:            String(cfg.delayMs         ?? 0),
     AKAMAI_PROXY:        'true',
     DASHBOARD_ENABLED:   'true',
-    ELECTRON_RUN_AS_NODE: '1',                    // needed if we fall back to execPath
+    ELECTRON_RUN_AS_NODE: '1',
     ...(publicUrl ? { TAILSCALE_FUNNEL_URL: publicUrl } : {}),
   };
 }
@@ -134,7 +146,10 @@ function setPublicUrl(url) {
   // new public URL as TAILSCALE_FUNNEL_URL.
   if (_child) {
     log.info('[agent-runner] Public URL changed — restarting to re-register:', url);
-    _stopping = false;   // allow auto-restart after the kill
+    // Use a controlled restart: kill current, let exit handler restart cleanly
+    // Mark as intentional so backoff doesn't accumulate
+    _backoffMs = 500;    // restart quickly — this is a deliberate URL update
+    _stopping  = false;  // allow auto-restart after the kill
     _child.kill('SIGTERM');
   }
 }
