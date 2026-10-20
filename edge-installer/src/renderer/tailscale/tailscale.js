@@ -72,9 +72,9 @@ function applyStatus(s) {
           fn: () => api.openExternal('https://login.tailscale.com/admin/dns'),
         },
         {
-          label: '2️⃣  Enable Funnel (ACL page)',
+          label: '2️⃣  Enable Funnel (JSON editor — add nodeAttrs)',
           cls: 'btn-warn',
-          fn: () => api.openExternal('https://login.tailscale.com/admin/acls'),
+          fn: () => api.openExternal('https://login.tailscale.com/admin/acls/json'),
         },
         {
           label: '↺ Retry after enabling both',
@@ -131,10 +131,15 @@ function showManualInstructions() {
     </ol>
     <div style="margin-top:10px;color:#6b7280;font-size:12px">
       Your machine: <strong id="machineNameInBlock"></strong><br>
-      If you don't see Funnel in the ACL editor, add this to your ACL JSON:
-      <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">"funnel": ["tag:server"]</code>
-      and tag your machine as <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px">server</code>
-      on the <a href="#" id="machinesLink" style="color:#2563eb">Machines page</a>.
+      On the JSON editor page, add this block inside the root JSON object (keep your existing "acls"):
+      <pre style="background:#f3f4f6;padding:8px;border-radius:4px;margin-top:6px;font-size:11px;overflow-x:auto">"nodeAttrs": [
+  {
+    "target": ["autogroup:member"],
+    "attr":   ["funnel"]
+  }
+]</pre>
+      Then also go to the <a href="#" id="dnsLink" style="color:#2563eb">DNS settings page</a>
+      and toggle <strong>HTTPS Certificates</strong> ON.
     </div>
   `;
   document.getElementById('checklist').after(el);
@@ -145,10 +150,10 @@ function showManualInstructions() {
     if (nameEl && s.dnsName) nameEl.textContent = s.dnsName;
   });
 
-  const ml = document.getElementById('machinesLink');
+  const ml = document.getElementById('dnsLink');
   if (ml) ml.addEventListener('click', e => {
     e.preventDefault();
-    api.openExternal('https://login.tailscale.com/admin/machines');
+    api.openExternal('https://login.tailscale.com/admin/dns');
   });
 }
 

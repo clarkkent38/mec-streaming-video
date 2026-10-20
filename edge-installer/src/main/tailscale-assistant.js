@@ -17,7 +17,7 @@ const TS_PATHS_WIN = [
 
 // ── Admin console links (always known, no need to parse CLI output) ──────────
 const ADMIN_HTTPS_LINK  = 'https://login.tailscale.com/admin/dns';
-const ADMIN_FUNNEL_LINK = 'https://login.tailscale.com/admin/acls';
+const ADMIN_FUNNEL_LINK = 'https://login.tailscale.com/admin/acls/json';
 const ADMIN_MACHINES    = 'https://login.tailscale.com/admin/machines';
 
 // ── CLI runner ────────────────────────────────────────────────────────────────
