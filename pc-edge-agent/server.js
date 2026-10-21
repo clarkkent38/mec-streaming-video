@@ -615,7 +615,8 @@ app.listen(PORT, BIND_HOST, () => {
 
 if (DASHBOARD_ENABLED) {
   const dash = express();
-  dash.use(cors({ origin: 'http://127.0.0.1:' + DASHBOARD_PORT }));
+  // Allow requests from Electron renderer (file:// origin) and localhost
+  dash.use(cors({ origin: true, credentials: false }));
   dash.use(express.json());
 
   // Helper: compute percentiles from a bucket's latencies array

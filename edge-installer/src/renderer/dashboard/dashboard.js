@@ -135,11 +135,13 @@ function tickUptime() {
 async function refreshStats() {
   try {
     const res  = await fetch(`${_dashUrl}/api/stats`);
-    if (!res.ok) return;
+    if (!res.ok) { console.warn('[dashboard] /api/stats returned', res.status); return; }
     const data = await res.json();
     renderKpis(data);
     if (data.uptime_s) _startTime = Date.now() - data.uptime_s * 1000;
-  } catch (_) { /* agent may not be running yet */ }
+  } catch (err) {
+    console.error('[dashboard] refreshStats failed:', err.message);
+  }
 }
 
 function fmt(val, unit, decimals = 0) {
@@ -155,24 +157,28 @@ function fmtBytes(b) {
 }
 
 function renderKpis(data) {
-  document.getElementById('kpi-requests').textContent  = data.requestsServed?.toLocaleString() ?? '—';
-  document.getElementById('kpi-hitRatio').textContent  = data.cacheHitRatio != null ? (data.cacheHitRatio * 100).toFixed(1) + '%' : '—';
-  document.getElementById('kpi-p50').textContent       = fmt(data.p50_ms, ' ms');
-  document.getElementById('kpi-p95').textContent       = fmt(data.p95_ms, ' ms');
-  document.getElementById('kpi-throughput').textContent = fmt(data.throughputMbps, ' Mbps', 2);
-  document.getElementById('kpi-saved').textContent     = fmtBytes(data.dataSavedBytes);
-  document.getElementById('kpi-latencySaved').textContent = fmt(data.latencySavedMs, ' ms');
+  document.getElementById('kpi-requests').textContent   = data.requestsServed != null ? data.requestsServed.toLocaleString() : '—';
+  document.getElementById('kpi-hitRatio').textContent   = data.cacheHitRatio != null ? (data.cacheHitRatio * 100).toFixed(1) + '%' : '—';
+  document.getElementById('kpi-p50').textContent        = fmt(data.p50_ms, ' ms');
+  document.getElementById('kpi-p95').textContent        = fmt(data.p95_ms, ' ms');
+  document.getElementById('kpi-throughput').textContent = data.throughputMbps != null
+    ? (data.throughputMbps < 0.01 ? fmtBytes(data.totalBytes) + ' total' : fmt(data.throughputMbps, ' Mbps', 2))
+    : '—';
+  document.getElementById('kpi-saved').textContent      = fmtBytes(data.cacheBytes);
+  document.getElementById('kpi-latencySaved').textContent = data.latencySavedMs != null ? fmt(data.latencySavedMs, ' ms') : (data.avgOriginMs != null ? fmt(data.avgOriginMs, ' ms avg origin') : '—');
 }
 
 // ── Series fetch & chart update ───────────────────────────────────────────────
 async function refreshSeries() {
   try {
     const res  = await fetch(`${_dashUrl}/api/series?window=${_currentWindow}`);
-    if (!res.ok) return;
+    if (!res.ok) { console.warn('[dashboard] /api/series returned', res.status); return; }
     const { series } = await res.json();
     updateCharts(series);
     refreshRequestTable();
-  } catch (_) {}
+  } catch (err) {
+    console.error('[dashboard] refreshSeries failed:', err.message);
+  }
 }
 
 // ── Orchestrator RTT history ──────────────────────────────────────────────────
@@ -246,22 +252,24 @@ function initCharts() {
 
 function updateCharts(series) {
   if (!series || series.length === 0) return;
-  const labels  = series.map(b => b.key.slice(-8));   // last 8 chars of ISO key
+  const labels  = series.map(b => b.key.slice(-8));
+
+  // For latency: show avgMs even when no cache hits yet (all misses)
   const hitLat  = series.map(b => b.hits > 0 ? Math.round(b.p50) : null);
-  const missLat = series.map(b => b.misses > 0 ? b.avgMs : null);
+  const missLat = series.map(b => b.misses > 0 ? Math.round(b.avgMs) : null);
   const tput    = series.map(b => b.throughputMbps);
-  const hitRat  = series.map(b => Math.round(b.hitRatio * 100));
-  const cacheB  = series.map(b => b.hits   > 0 ? Math.round(b.bytes * b.hitRatio)         : 0);
-  const origB   = series.map(b => b.misses > 0 ? Math.round(b.bytes * (1 - b.hitRatio))   : 0);
-  const origMs  = series.map(b => b.originMs || null);
+  const hitRat  = series.map(b => parseFloat((b.hitRatio * 100).toFixed(1)));
+  const cacheB  = series.map(b => Math.round(b.bytes * b.hitRatio));
+  const origB   = series.map(b => Math.round(b.bytes * (1 - b.hitRatio)));
+  const origMs  = series.map(b => b.misses > 0 && b.originMs > 0 ? Math.round(b.originMs) : null);
   const rps     = series.map(b => _currentWindow === 'seconds' ? b.requests : Math.round(b.requests / 60));
 
-  setChart('chartLatency',    labels, [hitLat, missLat]);
-  setChart('chartThroughput', labels, [tput]);
-  setChart('chartHitRatio',   labels, [hitRat]);
-  setChart('chartBytes',      labels, [cacheB, origB]);
-  setChart('chartOriginVsHit',labels, [origMs, hitLat]);
-  setChart('chartRps',        labels, [rps]);
+  setChart('chartLatency',     labels, [hitLat, missLat]);
+  setChart('chartThroughput',  labels, [tput]);
+  setChart('chartHitRatio',    labels, [hitRat]);
+  setChart('chartBytes',       labels, [cacheB, origB]);
+  setChart('chartOriginVsHit', labels, [origMs, hitLat]);
+  setChart('chartRps',         labels, [rps]);
 }
 
 function setChart(id, labels, dataSets) {
