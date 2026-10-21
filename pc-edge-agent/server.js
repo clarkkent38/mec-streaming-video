@@ -122,15 +122,33 @@ function logEvent(type, detail) {
   console.log(`[${entry.ts}] [${edgeId}] ${type}:`, JSON.stringify(detail));
 }
 
-// ─── 4. HTTP Fetch Helper (Native http/https without extra deps) ──────────────
+// ─── 4. HTTP Fetch Helper — AbortController-based hard timeout ───────────────
+//
+// Previous implementation used req.on('timeout') + req.destroy() which
+// sometimes hangs because the response stream stays open after socket destroy.
+// Using AbortController gives a guaranteed hard deadline.
 
 function makeRequest(url, options = {}) {
+  const timeoutMs = options.timeout || 8000;
+
   return new Promise((resolve, reject) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`timeout after ${timeoutMs}ms fetching ${url}`));
+    }, timeoutMs);
+
     const lib = url.startsWith('https') ? https : http;
-    const req = lib.request(url, options, (res) => {
+
+    // Build request options — strip our custom keys
+    const reqOpts = { method: options.method || 'GET', signal: controller.signal };
+    if (options.headers) reqOpts.headers = options.headers;
+
+    const req = lib.request(url, reqOpts, (res) => {
       const chunks = [];
       res.on('data', chunk => chunks.push(chunk));
       res.on('end', () => {
+        clearTimeout(timer);
         const bodyBuffer = Buffer.concat(chunks);
         const bodyText   = bodyBuffer.toString('utf8');
         let json = null;
@@ -143,10 +161,14 @@ function makeRequest(url, options = {}) {
           json,
         });
       });
+      res.on('error', (err) => { clearTimeout(timer); reject(err); });
     });
 
-    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
-    req.on('error', (err) => reject(err));
+    req.on('error', (err) => {
+      clearTimeout(timer);
+      // Ignore abort errors — already rejected via timer
+      if (err.name !== 'AbortError' && err.code !== 'ABORT_ERR') reject(err);
+    });
 
     if (options.body) {
       req.write(typeof options.body === 'string' ? options.body : JSON.stringify(options.body));
