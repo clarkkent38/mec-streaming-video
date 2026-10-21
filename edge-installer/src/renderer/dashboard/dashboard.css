@@ -33,6 +33,25 @@ html, body {
   overflow-x: hidden;
 }
 
+/* ── Action bar (always visible, top of page) ── */
+.action-bar {
+  display: flex; gap: 10px; padding: 10px 20px;
+  background: var(--surface); border-bottom: 2px solid var(--border);
+  align-items: center; flex-wrap: wrap;
+}
+.btn-start {
+  background: #16a34a; color: #fff; padding: 9px 22px;
+  font-size: 14px; font-weight: 700; border-radius: var(--radius);
+  border: none; cursor: pointer; letter-spacing: 0.02em;
+}
+.btn-start:hover { background: #15803d; }
+.btn-stop {
+  background: #dc2626; color: #fff; padding: 9px 22px;
+  font-size: 14px; font-weight: 700; border-radius: var(--radius);
+  border: none; cursor: pointer;
+}
+.btn-stop:hover { background: #b91c1c; }
+
 /* ── Topbar ── */
 .topbar {
   position: sticky; top: 0; z-index: 100;

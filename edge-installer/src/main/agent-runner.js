@@ -90,8 +90,6 @@ function ensureAgentDeps(agentDir) {
 
 function buildEnv(cfg, publicUrl) {
   // Generate a stable edgeId from the node label and persist it.
-  // Without this, server.js generates a new random suffix every start,
-  // causing the orchestrator to see a brand-new edge each restart.
   if (!cfg.edgeId) {
     const label = (cfg.nodeLabel || 'EdgeNest').toLowerCase().replace(/[^a-z0-9]/g, '-');
     const suffix = Math.random().toString(36).substring(2, 6);
@@ -100,20 +98,30 @@ function buildEnv(cfg, publicUrl) {
     log.info('[agent-runner] Generated stable edgeId:', cfg.edgeId);
   }
 
+  // Always use the saved publicUrl if available — even if _publicUrl wasn't
+  // passed in (handles case where agent starts before Tailscale sets the URL)
+  const effectivePublicUrl = publicUrl || cfg.publicUrl || null;
+
+  if (effectivePublicUrl) {
+    log.info('[agent-runner] Using public URL:', effectivePublicUrl);
+  } else {
+    log.warn('[agent-runner] No public URL set — agent will register with LAN IP');
+  }
+
   return {
-    ...process.env,                               // inherit PATH, USERPROFILE, etc.
+    ...process.env,
     PORT:                String(cfg.agentPort     || 5001),
     DASHBOARD_PORT:      String(cfg.dashboardPort || 5002),
-    BIND_HOST:           '0.0.0.0',               // reachable via Funnel / LAN
+    BIND_HOST:           '0.0.0.0',
     NODE_LABEL:          cfg.nodeLabel             || 'EdgeNest',
-    EDGE_ID:             cfg.edgeId,              // stable — survives restarts
+    EDGE_ID:             cfg.edgeId,
     ORCHESTRATOR_URL:    cfg.orchestratorUrl        || '',
     ORIGIN_URL:          cfg.originUrl              || '',
     DELAY_MS:            String(cfg.delayMs         ?? 0),
     AKAMAI_PROXY:        'true',
     DASHBOARD_ENABLED:   'true',
     ELECTRON_RUN_AS_NODE: '1',
-    ...(publicUrl ? { TAILSCALE_FUNNEL_URL: publicUrl } : {}),
+    ...(effectivePublicUrl ? { TAILSCALE_FUNNEL_URL: effectivePublicUrl } : {}),
   };
 }
 

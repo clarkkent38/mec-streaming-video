@@ -379,6 +379,49 @@ document.getElementById('btnDarkMode').addEventListener('click', () => {
   document.body.classList.toggle('dark');
 });
 
+// ── Action bar: Start / Stop / Setup / Tailscale ─────────────────────────────
+
+const btnStart      = document.getElementById('btnStartAgent');
+const btnStop       = document.getElementById('btnStopAgent');
+const btnOpenSetup  = document.getElementById('btnOpenSetup');
+const btnOpenTS     = document.getElementById('btnOpenTailscale');
+
+async function refreshAgentButtons() {
+  const { ok, status } = await api.agentStatus();
+  const running = ok && status && status.running;
+  if (btnStart) btnStart.style.display = running ? 'none' : '';
+  if (btnStop)  btnStop.style.display  = running ? '' : 'none';
+  // Show Tailscale button when not LIVE and mode is public
+  const stateRes = await api.getState();
+  const notLive  = stateRes.state !== 'LIVE';
+  if (btnOpenTS) btnOpenTS.style.display = (notLive && _cfg.mode === 'public') ? '' : 'none';
+}
+
+if (btnStart) {
+  btnStart.addEventListener('click', async () => {
+    btnStart.disabled = true;
+    btnStart.textContent = '⏳ Starting…';
+    await api.startAgent();
+    setTimeout(refreshAgentButtons, 2000);
+  });
+}
+
+if (btnStop) {
+  btnStop.addEventListener('click', async () => {
+    btnStop.disabled = true;
+    btnStop.textContent = '⏳ Stopping…';
+    await api.stopAgent();
+    setTimeout(refreshAgentButtons, 1000);
+  });
+}
+
+if (btnOpenSetup)  btnOpenSetup.addEventListener('click',  () => api.openSetup());
+if (btnOpenTS)     btnOpenTS.addEventListener('click',     () => api.openTailscale());
+
+// Refresh button state every 3s
+setInterval(refreshAgentButtons, 3000);
+refreshAgentButtons();
+
 document.getElementById('btnExportCsv').addEventListener('click', async () => {
   // Open the CSV download URL in the default browser so it triggers a save dialog
   await api.openExternal(`${_dashUrl}/api/export.csv`);
